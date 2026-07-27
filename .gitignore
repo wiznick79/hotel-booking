@@ -1,0 +1,15 @@
+.idea/
+*.iml
+target/
+.env
+.env.*
+!.env.example
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Local infrastructure data
+infrastructure/.data/
+
