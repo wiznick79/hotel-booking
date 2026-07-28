@@ -22,6 +22,12 @@ The checkout date is exclusive. A reservation from July 10 through July 14 occup
 
 Discount codes are a planned feature. Hotel managers will be able to configure codes with validity rules and discount values. A successfully applied discount must be stored in the reservation price snapshot so later changes to the code do not alter existing reservations.
 
+## Room unavailability and maintenance
+
+A room may be unavailable for a future period because of renovation, maintenance, damage, or another operational reason. This should be represented as a dated unavailability period rather than only changing the room's current active flag.
+
+Creating an unavailability period prevents new reservations from using the room during the affected dates. Existing future reservations are not cancelled automatically; the system identifies them and warns staff so they can reassign the reservations. An emergency override is allowed for unsafe rooms and must record the reason and responsible staff member.
+
 ## Availability
 
 Availability must account for:

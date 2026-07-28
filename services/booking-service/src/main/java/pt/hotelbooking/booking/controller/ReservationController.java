@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
 import pt.hotelbooking.booking.model.dto.RoomReassignmentRequest;
+import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.service.ReservationService;
 import java.util.UUID;
 import java.time.LocalDate;
@@ -44,6 +45,14 @@ public class ReservationController {
         return reservationService.create(request, customerUsername);
     }
 
+    @PutMapping("/{id}/customer")
+    @PreAuthorize("isAuthenticated()")
+    public ReservationResponse modify(@PathVariable UUID id,
+                                      @Valid @RequestBody ReservationModificationRequest request,
+                                      Authentication authentication) {
+        return reservationService.modify(id, request, authentication.getName());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ReservationResponse findById(@PathVariable UUID id) {
@@ -59,11 +68,26 @@ public class ReservationController {
         return reservationService.findByHotelAndDateRange(hotelId, from, to);
     }
 
+    @GetMapping("/room/{roomId}/affected")
+    @PreAuthorize("hasAuthority('RESERVATION_READ')")
+    public List<ReservationResponse> findAffectedByRoomAndDateRange(
+            @PathVariable String roomId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return reservationService.findAffectedByRoomAndDateRange(roomId, from, to);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancel(@PathVariable UUID id) {
         reservationService.cancel(id);
+    }
+
+    @PatchMapping("/{id}/confirm")
+    @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
+    public ReservationResponse confirm(@PathVariable UUID id, Authentication authentication) {
+        return reservationService.confirm(id, authentication.getName());
     }
 
     @PatchMapping("/{id}/hold")
@@ -76,7 +100,8 @@ public class ReservationController {
     @PatchMapping("/{id}/rooms")
     @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
     public ReservationResponse reassignRoom(@PathVariable UUID id,
-                                            @Valid @RequestBody RoomReassignmentRequest request) {
-        return reservationService.reassignRoom(id, request);
+                                            @Valid @RequestBody RoomReassignmentRequest request,
+                                            Authentication authentication) {
+        return reservationService.reassignRoom(id, request, authentication.getName());
     }
 }

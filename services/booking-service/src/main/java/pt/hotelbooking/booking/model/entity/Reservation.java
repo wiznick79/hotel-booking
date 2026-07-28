@@ -75,6 +75,23 @@ public class Reservation extends BookingBaseEntity {
         status = ReservationStatus.CANCELLED;
     }
 
+    public void confirm() {
+        if (status != ReservationStatus.PENDING && status != ReservationStatus.HELD) {
+            throw new IllegalStateException("Only pending or held reservations can be confirmed.");
+        }
+
+        status = ReservationStatus.CONFIRMED;
+        holdUntil = null;
+    }
+
+    public void expireHold() {
+        if (status == ReservationStatus.HELD) {
+            status = ReservationStatus.CANCELLED;
+            holdUntil = null;
+            revokeGuestAccess();
+        }
+    }
+
     public void applyPriceSnapshot(BigDecimal totalPrice, String currency) {
         this.totalPrice = totalPrice;
         this.currency = currency;
@@ -98,6 +115,23 @@ public class Reservation extends BookingBaseEntity {
     public void configureGuestAccess(String tokenHash, Instant expiresAt) {
         this.guestAccessTokenHash = tokenHash;
         this.guestAccessTokenExpiresAt = expiresAt;
+    }
+
+    public void updateDetails(String guestName, String guestPhone, String guestEmail,
+                              int guestCount, LocalDate checkInDate, LocalDate checkOutDate,
+                              String notes) {
+        this.guestName = guestName;
+        this.guestPhone = guestPhone;
+        this.guestEmail = guestEmail;
+        this.guestCount = guestCount;
+        this.checkInDate = checkInDate;
+        this.checkOutDate = checkOutDate;
+        this.notes = notes;
+    }
+
+    public void replaceRooms(List<String> roomIds) {
+        items.clear();
+        roomIds.forEach(this::addRoom);
     }
 
     public boolean hasValidGuestAccess(Instant now) {

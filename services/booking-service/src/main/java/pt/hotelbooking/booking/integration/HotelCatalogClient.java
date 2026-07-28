@@ -56,6 +56,19 @@ public class HotelCatalogClient {
         }
     }
 
+    public boolean hotelIsActive(String hotelId) {
+        try {
+            HotelDetails hotel = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                    .uri("/api/hotels/{id}", hotelId)
+                    .retrieve()
+                    .body(HotelDetails.class);
+
+            return hotel != null && hotel.active();
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Hotel service is unavailable.", exception);
+        }
+    }
+
     public BigDecimal quoteRoomType(
             UUID roomTypeId,
             LocalDate checkInDate,
@@ -82,6 +95,23 @@ public class HotelCatalogClient {
         return response.totalPrice();
     }
 
+    public boolean roomIsAvailable(String roomId, LocalDate checkInDate, LocalDate checkOutDate) {
+        try {
+            Boolean available = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/room-unavailabilities/room/{roomId}/availability")
+                            .queryParam("fromDate", checkInDate)
+                            .queryParam("toDate", checkOutDate)
+                            .build(roomId))
+                    .retrieve()
+                    .body(Boolean.class);
+
+            return Boolean.TRUE.equals(available);
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Hotel service is unavailable.", exception);
+        }
+    }
+
     public record RoomDetails(
             UUID id,
             UUID hotelId,
@@ -89,6 +119,12 @@ public class HotelCatalogClient {
             String roomNumber,
             Integer floor,
             String status,
+            boolean active) {
+    }
+
+    private record HotelDetails(
+            UUID id,
+            String name,
             boolean active) {
     }
 

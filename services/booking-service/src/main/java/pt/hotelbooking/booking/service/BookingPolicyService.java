@@ -20,10 +20,8 @@ public class BookingPolicyService {
         BookingPolicy policy = policyRepo.findByHotelId(request.hotelId())
                 .orElseGet(() -> new BookingPolicy(request.hotelId(), request.payLaterAllowed(),
                         request.maxUnconfirmedBookings(), Duration.ofMinutes(request.holdDurationMinutes())));
-        if (policy.getId() != null) {
-            policy.update(request.payLaterAllowed(), request.maxUnconfirmedBookings(),
-                    Duration.ofMinutes(request.holdDurationMinutes()), request.cancellationDeadlineDays());
-        }
+        policy.update(request.payLaterAllowed(), request.maxUnconfirmedBookings(),
+                Duration.ofMinutes(request.holdDurationMinutes()), request.cancellationDeadlineDays());
         return policyRepo.save(policy);
     }
 }

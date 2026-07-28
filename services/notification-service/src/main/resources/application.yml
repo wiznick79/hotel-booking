@@ -1,0 +1,20 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: jdbc:h2:file:./data/notification-service
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+notification:
+  retry-delay-ms: 60000
+
+internal-events:
+  service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}

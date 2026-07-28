@@ -21,3 +21,5 @@ Room types are hotel-owned in the initial model. A future larger-scale design co
 2. Cross-service communication uses APIs or events, never another service's database.
 3. The first release prioritizes one hotel and a narrow booking workflow.
 4. Security, auditability, and operational visibility are part of the design from the beginning.
+5. Notifications are isolated in `notification-service`; reservation events use an internal event contract now and can be connected to SNS/SQS later.
+6. Local service-to-service event delivery uses a configurable internal service token; production deployment should replace this with stronger workload identity or mTLS.

@@ -30,4 +30,14 @@ class PermissionServiceTests {
                 .contains("RESERVATION_READ", "RESERVATION_MANAGE")
                 .doesNotContain("HOTEL_MANAGE");
     }
+
+    @Test
+    void customerReceivesBookingPermissionsOnly() {
+        List<String> permissions = permissionService.permissionsFor(List.of(
+                new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+
+        assertThat(permissions)
+                .contains("RESERVATION_CREATE", "ROOM_READ")
+                .doesNotContain("RESERVATION_MANAGE", "USER_MANAGE");
+    }
 }

@@ -1,4 +1,4 @@
-package pt.hotelbooking.booking.model.entity;
+package pt.hotelbooking.notification.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -16,7 +17,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "notifications")
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification {
 
     @Id
@@ -27,6 +28,10 @@ public class Notification {
 
     private String recipient;
 
+    private String subject;
+
+    private String body;
+
     @Enumerated(EnumType.STRING)
     private NotificationStatus status = NotificationStatus.PENDING;
 
@@ -36,9 +41,11 @@ public class Notification {
 
     private String lastError;
 
-    public Notification(UUID reservationId, String recipient) {
+    public Notification(UUID reservationId, String recipient, String subject, String body) {
         this.reservationId = reservationId;
         this.recipient = recipient;
+        this.subject = subject;
+        this.body = body;
     }
 
     public void markSent() {

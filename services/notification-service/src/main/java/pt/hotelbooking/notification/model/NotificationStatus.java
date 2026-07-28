@@ -1,7 +1,6 @@
-package pt.hotelbooking.booking.model.entity;
+package pt.hotelbooking.notification.model;
 
 public enum NotificationStatus {
-
     PENDING,
     SENT,
     FAILED

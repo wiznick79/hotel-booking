@@ -56,6 +56,7 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Guests must be able to view or manage eligible bookings through a secure link.
 - Guest access is initially read-only; unauthenticated guests must contact staff to request booking changes.
 - Registered customers must be able to view booking history.
+- Registered customers may modify their own reservation before the cancellation deadline, subject to room availability and updated pricing validation.
 - Reservations created by authenticated customers should be associated with the customer identity and visible through a personal reservation-history endpoint.
 - Staff must be able to search, view, modify, and cancel reservations according to permissions.
 - Initial reservation statuses are `PENDING`, `CONFIRMED`, `CANCELLED`, `CHECKED_IN`, `CHECKED_OUT`, and `NO_SHOW`.
@@ -65,12 +66,21 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Guest name, phone number, and guest count are required for an unauthenticated booking.
 - Guest email is optional for unauthenticated bookings but recommended for confirmations and management information.
 - A reservation can be created without payment when the hotel permits pay-later bookings.
+- Staff must be able to manually confirm eligible pending or held reservations.
+- Temporary holds must expire automatically and release their rooms when their expiration time is reached.
 - Reservation prices are frozen when the reservation is created.
 - Hotel managers should be able to create and manage discount codes.
 - Guests and registered customers should be able to apply valid discount codes during booking.
 - Discount codes should support configurable validity periods, usage limits, and discount values or percentages.
 - The applied discount and its resulting price must be frozen as part of the reservation price snapshot.
 - Room availability must support temporary staff holds and rooms marked unavailable for operational reasons.
+- Hotel staff must be able to schedule a room as unavailable for a future period, including a reason such as renovation, maintenance, or damage repair.
+- A future room-unavailability period must prevent new bookings that overlap the period.
+- When an unavailable room has future reservations, the system must identify and warn about the affected reservations rather than silently cancelling them.
+- Staff must be able to reassign affected reservations to other suitable rooms.
+- Emergency unavailability must support an override for unsafe rooms, with the impact recorded for staff follow-up.
+- Room unavailability changes and reservation reassignments must be auditable.
+- The current implementation provides scheduled room-unavailability periods, overlap validation, a public availability check for booking-service integration, a staff-only affected-reservations query, emergency blocks with mandatory reasons, and audit records for unavailability creation and reservation room reassignment. Broader audit history remains future work.
 - Booking dates are business dates and must be represented separately from audit timestamps.
 
 ### Notifications

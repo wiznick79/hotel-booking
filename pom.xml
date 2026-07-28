@@ -21,6 +21,7 @@
         <module>services/hotel-service</module>
         <module>services/booking-service</module>
         <module>services/identity-service</module>
+        <module>services/notification-service</module>
     </modules>
 
     <properties>

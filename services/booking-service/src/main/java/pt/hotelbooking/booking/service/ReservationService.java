@@ -7,13 +7,16 @@ import pt.hotelbooking.booking.model.dto.ReservationRequest;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
 import pt.hotelbooking.booking.model.entity.Reservation;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
+import pt.hotelbooking.booking.model.entity.AuditLog;
 import pt.hotelbooking.booking.repository.ReservationRepository;
+import pt.hotelbooking.booking.repository.AuditLogRepository;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
 import pt.hotelbooking.booking.integration.HotelCatalogClient;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
 import pt.hotelbooking.booking.exception.ReservationNotFoundException;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
 import pt.hotelbooking.booking.model.dto.RoomReassignmentRequest;
+import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.event.EventPublisher;
 import pt.hotelbooking.booking.event.ReservationCreatedEvent;
 
@@ -33,11 +36,11 @@ public class ReservationService {
 
     private final GuestAccessService guestAccessService;
 
-    private final NotificationService notificationService;
-
     private final EventPublisher eventPublisher;
 
     private final DiscountCodeService discountCodeService;
+
+    private final AuditLogRepository auditLogRepository;
 
     @Transactional(readOnly = true)
     public ReservationResponse findById(java.util.UUID id) {
@@ -73,6 +76,25 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    public List<ReservationResponse> findAffectedByRoomAndDateRange(String roomId,
+                                                                     LocalDate fromDate,
+                                                                     LocalDate toDate) {
+        if (!toDate.isAfter(fromDate)) {
+            throw new IllegalArgumentException("The end date must be after the start date.");
+        }
+
+        return reservationRepo.findAffectedByRoomAndDateRange(
+                        roomId,
+                        fromDate,
+                        toDate,
+                        List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
+                                ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN))
+                .stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ReservationResponse> findMyReservations(String customerUsername) {
         return reservationRepo.findByCustomerUsernameOrderByCheckInDateDesc(customerUsername)
                 .stream()
@@ -98,10 +120,35 @@ public class ReservationService {
 
         reservation.cancel();
         reservation.revokeGuestAccess();
+        publishReservationEvent("ReservationCancelled", reservation);
+    }
+
+    @Transactional
+    public ReservationResponse confirm(UUID id, String actor) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        reservation.confirm();
+        auditLogRepository.save(new AuditLog(
+                actor,
+                "RESERVATION_CONFIRMED",
+                "Reservation",
+                reservation.getId(),
+                "Reservation confirmed by staff."));
+        publishReservationEvent("ReservationConfirmed", reservation);
+
+        return ReservationResponse.from(reservation);
     }
 
     @Transactional
     public ReservationResponse reassignRoom(java.util.UUID id, RoomReassignmentRequest request) {
+        return reassignRoom(id, request, "system");
+    }
+
+    @Transactional
+    public ReservationResponse reassignRoom(java.util.UUID id,
+                                             RoomReassignmentRequest request,
+                                             String actor) {
         Reservation reservation = reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
@@ -114,6 +161,13 @@ public class ReservationService {
         }
 
         reservation.reassignRoom(request.currentRoomId(), request.replacementRoomId());
+        auditLogRepository.save(new AuditLog(
+                actor,
+                "RESERVATION_ROOM_REASSIGNED",
+                "Reservation",
+                reservation.getId(),
+                request.currentRoomId() + " -> " + request.replacementRoomId()));
+
         return ReservationResponse.from(reservation);
     }
 
@@ -128,6 +182,10 @@ public class ReservationService {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
 
+        if (!hotelCatalogClient.hotelIsActive(request.hotelId())) {
+            throw new IllegalStateException("The hotel is not accepting new bookings.");
+        }
+
         List<ReservationStatus> blockingStatuses = List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
         BigDecimal totalPrice = BigDecimal.ZERO;
@@ -135,6 +193,10 @@ public class ReservationService {
             HotelCatalogClient.RoomDetails room = hotelCatalogClient.getRoom(roomId);
             if (!room.active() || !"AVAILABLE".equals(room.status())) {
                 throw new IllegalStateException("Room is not available for booking: " + roomId);
+            }
+
+            if (!hotelCatalogClient.roomIsAvailable(roomId, request.checkInDate(), request.checkOutDate())) {
+                throw new IllegalStateException("Room is unavailable during the requested dates: " + roomId);
             }
 
             if (!room.hotelId().toString().equals(request.hotelId())) {
@@ -190,9 +252,10 @@ public class ReservationService {
         reservation.applyDiscountSnapshot(discount.code(), discount.amount());
 
         Reservation savedReservation = reservationRepo.save(reservation);
-        notificationService.sendGuestAccessLink(savedReservation, guestAccessToken.rawToken());
         eventPublisher.publish(new ReservationCreatedEvent(
                 savedReservation.getId(),
+                savedReservation.getGuestEmail(),
+                savedReservation.getGuestName(),
                 savedReservation.getHotelId(),
                 savedReservation.getCheckInDate(),
                 savedReservation.getCheckOutDate(),
@@ -200,6 +263,68 @@ public class ReservationService {
                 savedReservation.getCurrency()));
 
         return ReservationResponse.from(savedReservation);
+    }
+
+    @Transactional
+    public ReservationResponse modify(UUID id, ReservationModificationRequest request,
+                                      String customerUsername) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        if (!customerUsername.equals(reservation.getCustomerUsername())) {
+            throw new IllegalStateException("You can only modify your own reservations.");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED
+                || reservation.getStatus() == ReservationStatus.CHECKED_OUT) {
+            throw new IllegalStateException("Reservation cannot be modified in its current status.");
+        }
+
+        BookingPolicy policy = policyRepo.findByHotelId(reservation.getHotelId()).orElse(null);
+        if (policy != null && LocalDate.now().isAfter(
+                reservation.getCheckInDate().minusDays(policy.getCancellationDeadlineDays()))) {
+            throw new IllegalStateException("The modification deadline has passed.");
+        }
+
+        if (!request.checkOutDate().isAfter(request.checkInDate())) {
+            throw new IllegalArgumentException("Check-out date must be after check-in date.");
+        }
+
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        List<ReservationStatus> blockingStatuses = List.of(ReservationStatus.PENDING,
+                ReservationStatus.HELD, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
+
+        for (String roomId : request.roomIds()) {
+            HotelCatalogClient.RoomDetails room = hotelCatalogClient.getRoom(roomId);
+            if (!room.active() || !"AVAILABLE".equals(room.status())
+                    || !hotelCatalogClient.roomIsAvailable(roomId, request.checkInDate(), request.checkOutDate())
+                    || reservationRepo.hasBlockingReservationExcluding(reservation.getId(), roomId,
+                    request.checkOutDate(),
+                    request.checkInDate(), blockingStatuses, Instant.now())) {
+                throw new IllegalStateException("Room is not available for the modified reservation: " + roomId);
+            }
+
+            totalPrice = totalPrice.add(hotelCatalogClient.quoteRoomType(room.roomTypeId(),
+                    request.checkInDate(), request.checkOutDate()));
+        }
+
+        DiscountCodeService.DiscountResult discount = discountCodeService.apply(
+                reservation.getHotelId(), request.discountCode(), totalPrice, request.checkInDate());
+
+        reservation.updateDetails(request.guestName(), request.guestPhone(), request.guestEmail(),
+                request.guestCount(), request.checkInDate(), request.checkOutDate(), request.notes());
+        reservation.replaceRooms(request.roomIds());
+        reservation.applyPriceSnapshot(discount.total(), "EUR");
+        reservation.applyDiscountSnapshot(discount.code(), discount.amount());
+
+        GuestAccessService.GuestAccessToken accessToken = guestAccessService.createToken(request.checkOutDate());
+        reservation.configureGuestAccess(accessToken.hash(), accessToken.expiresAt());
+
+        auditLogRepository.save(new AuditLog(customerUsername, "RESERVATION_MODIFIED",
+                "Reservation", reservation.getId(), "Customer modified reservation details."));
+        publishReservationEvent("ReservationModified", reservation);
+
+        return ReservationResponse.from(reservation);
     }
 
     @Transactional
@@ -213,5 +338,36 @@ public class ReservationService {
         reservation.placeHold(holdUntil);
 
         return ReservationResponse.from(reservation);
+    }
+
+    @Transactional
+    public int expireHolds(Instant now) {
+        List<Reservation> expiredReservations = reservationRepo
+                .findByStatusAndHoldUntilBefore(ReservationStatus.HELD, now);
+
+        for (Reservation reservation : expiredReservations) {
+            reservation.expireHold();
+            auditLogRepository.save(new AuditLog(
+                    "system",
+                    "RESERVATION_HOLD_EXPIRED",
+                    "Reservation",
+                    reservation.getId(),
+                    "Temporary hold expired automatically."));
+            publishReservationEvent("ReservationHoldExpired", reservation);
+        }
+
+        return expiredReservations.size();
+    }
+
+    private void publishReservationEvent(String eventType, Reservation reservation) {
+        eventPublisher.publish(new pt.hotelbooking.booking.event.ReservationNotificationEvent(
+                eventType,
+                reservation.getId(),
+                reservation.getGuestEmail(),
+                reservation.getGuestName(),
+                reservation.getCheckInDate(),
+                reservation.getCheckOutDate(),
+                reservation.getTotalPrice(),
+                reservation.getCurrency()));
     }
 }
