@@ -19,6 +19,8 @@
 
     <modules>
         <module>services/hotel-service</module>
+        <module>services/booking-service</module>
+        <module>services/identity-service</module>
     </modules>
 
     <properties>

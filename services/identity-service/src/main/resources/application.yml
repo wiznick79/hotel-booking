@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: identity-service
+  profiles:
+    default: dev
+  datasource:
+    url: jdbc:h2:file:./data/identity;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+jwt:
+  secret: ${JWT_SECRET}

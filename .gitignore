@@ -12,4 +12,5 @@ Desktop.ini
 
 # Local infrastructure data
 infrastructure/.data/
-
+services/**/data/
+data/

@@ -1,0 +1,63 @@
+# Reservation Domain
+
+## Core model
+
+```text
+Reservation
+├── Guest details
+├── One or more ReservationItems
+├── Status
+├── Date range
+├── Frozen price summary
+├── Payment/confirmation policy
+└── Notes
+
+ReservationItem
+└── Physical Room
+```
+
+The reservation is associated with physical rooms by default. This is required for the second hotel, where room access will eventually depend on a room-specific PIN. PIN generation and door integration are outside the current scope.
+
+The checkout date is exclusive. A reservation from July 10 through July 14 occupies the nights of July 10, 11, 12, and 13.
+
+Discount codes are a planned feature. Hotel managers will be able to configure codes with validity rules and discount values. A successfully applied discount must be stored in the reservation price snapshot so later changes to the code do not alter existing reservations.
+
+## Availability
+
+Availability must account for:
+
+- Confirmed and pending reservations
+- Temporary staff holds
+- Rooms marked unavailable for maintenance or other operational reasons
+- Multiple rooms within one reservation
+
+The fundamental invariant is that one physical room cannot have overlapping active reservations or holds.
+
+## Payment and confirmation
+
+Hotels may configure whether pay-later bookings are accepted. A future policy model can support:
+
+- Pay at reception
+- Payment-required bookings
+- A maximum number of unpaid bookings
+- A deadline by which unpaid bookings must be manually confirmed
+- Automatic expiry of unconfirmed holds
+
+This avoids making every unpaid reservation permanently confirmed while keeping payment integration out of the first slice.
+
+## Pricing
+
+Pricing is calculated during booking and stored as a snapshot on the reservation. Future changes to rates must not change existing reservations.
+
+The pricing model must eventually support room-type prices by:
+
+- Date period
+- Weekday/weekend rules
+- High season
+- Holiday periods
+
+The initial weekend convention is Friday and Saturday nights. Sunday uses the normal nightly price. A missing weekend price also uses the normal nightly price.
+
+## Communication
+
+Email is the initial confirmation and secure-link channel. Guest access tokens are stored only as hashes and expire after the reservation checkout date plus a configurable grace period. SMS can be added later for phone-only bookings, but it requires an external SMS provider, delivery-status handling, costs, rate limiting, and privacy controls.

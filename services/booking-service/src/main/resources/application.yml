@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: booking-service
+  profiles:
+    default: dev
+  datasource:
+    url: jdbc:h2:file:./data/booking-service
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8082
+
+booking:
+  guest-access:
+    grace-period-days: 7
+  notifications:
+    retry-delay-ms: 60000
+  outbox:
+    dispatch-delay-ms: 5000
+
+hotel-service:
+  url: ${HOTEL_SERVICE_URL:http://localhost:8081}
+  connect-timeout-ms: ${HOTEL_SERVICE_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${HOTEL_SERVICE_READ_TIMEOUT_MS:5000}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
