@@ -23,6 +23,7 @@ create table identity_user_roles (
 create table identity_role_permissions (
     role_id bigint not null,
     permissions varchar(100) not null,
+    primary key (role_id, permissions),
     constraint fk_identity_role_permissions_role
         foreign key (role_id) references identity_roles(id)
 );

@@ -23,3 +23,4 @@ Room types are hotel-owned in the initial model. A future larger-scale design co
 4. Security, auditability, and operational visibility are part of the design from the beginning.
 5. Notifications are isolated in `notification-service`; reservation events use an internal event contract now and can be connected to SNS/SQS later.
 6. Local service-to-service event delivery uses a configurable internal service token; production deployment should replace this with stronger workload identity or mTLS.
+7. Draft PostgreSQL V1 schema scripts are maintained for all services, but H2 with `ddl-auto: update` remains active until PostgreSQL is introduced.
