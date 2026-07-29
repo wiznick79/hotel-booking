@@ -1,12 +1,18 @@
 package pt.hotelbooking.integration;
 
 import org.junit.jupiter.api.Test;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 import pt.hotelbooking.HotelServiceApplication;
 import pt.hotelbooking.booking.BookingServiceApplication;
-import pt.hotelbooking.booking.config.NotificationServiceProperties;
 import pt.hotelbooking.booking.event.LoggingEventPublisher;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
@@ -33,11 +39,19 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Testcontainers
 class BookingWorkflowIntegrationTests {
 
     private static final String INTERNAL_SERVICE_TOKEN = "change-this-development-token";
+
+    private static final String RESERVATION_EVENTS_TOPIC = "reservation-events";
+
+    @Container
+    private static final KafkaContainer KAFKA = new KafkaContainer(
+            DockerImageName.parse("apache/kafka:4.1.2"));
 
     @Test
     void shouldCreateBookingUsingHotelServiceAndDeliverNotificationThroughOutbox() {
@@ -46,14 +60,11 @@ class BookingWorkflowIntegrationTests {
         ConfigurableApplicationContext bookingContext = null;
 
         try {
+            createReservationEventsTopic();
             hotelContext = startHotelService();
             notificationContext = startNotificationService();
-            bookingContext = startBookingService(portOf(hotelContext), portOf(notificationContext));
+            bookingContext = startBookingService(portOf(hotelContext));
 
-            assertThat(bookingContext.getBean(NotificationServiceProperties.class).url())
-                    .isEqualTo("http://localhost:" + portOf(notificationContext));
-            assertThat(bookingContext.getBean(NotificationServiceProperties.class).serviceToken())
-                    .isEqualTo(INTERNAL_SERVICE_TOKEN);
             assertThat(notificationContext.getBean(InternalEventsProperties.class).serviceToken())
                     .isEqualTo(INTERNAL_SERVICE_TOKEN);
 
@@ -80,7 +91,9 @@ class BookingWorkflowIntegrationTests {
             assertThat(reservation.id()).isNotNull();
             assertThat(outboxEvents.findAll()).allSatisfy(event ->
                     assertThat(event.getPublishedAt()).isNotNull());
-            assertThat(notificationContext.getBean(NotificationRepository.class).count()).isEqualTo(1);
+            NotificationRepository notifications = notificationContext.getBean(NotificationRepository.class);
+            await().untilAsserted(() ->
+                    assertThat(notifications.count()).isEqualTo(1));
         } finally {
             close(bookingContext);
             close(notificationContext);
@@ -96,6 +109,10 @@ class BookingWorkflowIntegrationTests {
         Map<String, Object> properties = commonProperties("notification-integration");
         properties.put("internal-events.service-token", INTERNAL_SERVICE_TOKEN);
         properties.put("notification.retry-delay-ms", "3600000");
+        properties.put("spring.kafka.bootstrap-servers", KAFKA.getBootstrapServers());
+        properties.put("spring.kafka.consumer.group-id", "notification-service-integration-test");
+        properties.put("spring.kafka.consumer.auto-offset-reset", "earliest");
+        properties.put("booking-events.topic", RESERVATION_EVENTS_TOPIC);
         properties.put(
                 "spring.autoconfigure.exclude",
                 "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,"
@@ -105,12 +122,12 @@ class BookingWorkflowIntegrationTests {
         return startApplication(NotificationServiceApplication.class, properties);
     }
 
-    private ConfigurableApplicationContext startBookingService(int hotelPort, int notificationPort) {
+    private ConfigurableApplicationContext startBookingService(int hotelPort) {
         Map<String, Object> properties = commonProperties("booking-integration");
         properties.put("hotel-service.url", "http://localhost:" + hotelPort);
-        properties.put("notification-service.url", "http://localhost:" + notificationPort);
-        properties.put("notification-service.service-token", INTERNAL_SERVICE_TOKEN);
         properties.put("booking.outbox.dispatch-delay-ms", "3600000");
+        properties.put("spring.kafka.bootstrap-servers", KAFKA.getBootstrapServers());
+        properties.put("booking-events.topic", RESERVATION_EVENTS_TOPIC);
 
         return startApplication(BookingServiceApplication.class, properties);
     }
@@ -127,6 +144,19 @@ class BookingWorkflowIntegrationTests {
                 Map.entry("spring.main.banner-mode", "off"),
                 Map.entry("jwt.secret", "integration-secret-that-is-long-enough-for-hmac-sha256"),
                 Map.entry("JWT_SECRET", "integration-secret-that-is-long-enough-for-hmac-sha256")));
+    }
+
+    private void createReservationEventsTopic() {
+        Map<String, Object> properties = Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+
+        try (AdminClient adminClient = AdminClient.create(properties)) {
+            adminClient.createTopics(List.of(new NewTopic(RESERVATION_EVENTS_TOPIC, 3, (short) 1)))
+                    .all()
+                    .get();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not create the Kafka topic for the integration test.", exception);
+        }
     }
 
     private RoomResponse seedHotel(ConfigurableApplicationContext hotelContext) {

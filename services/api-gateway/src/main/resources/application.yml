@@ -17,6 +17,7 @@ spring:
                     redis-rate-limiter.replenishRate: 5
                     redis-rate-limiter.burstCapacity: 10
                     redis-rate-limiter.requestedTokens: 1
+                    rate-limiter: "#{@resilientRateLimiter}"
                     key-resolver: "#{@clientIpKeyResolver}"
             - id: public-booking-rate-limit
               uri: ${BOOKING_SERVICE_URL:http://localhost:8082}
@@ -29,6 +30,7 @@ spring:
                     redis-rate-limiter.replenishRate: 10
                     redis-rate-limiter.burstCapacity: 20
                     redis-rate-limiter.requestedTokens: 1
+                    rate-limiter: "#{@resilientRateLimiter}"
                     key-resolver: "#{@clientIpKeyResolver}"
             - id: identity-service
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}

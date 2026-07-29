@@ -13,6 +13,8 @@ spring:
     open-in-view: false
   flyway:
     enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 server:
   port: 8082
@@ -36,6 +38,9 @@ hotel-service:
 notification-service:
   url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
   service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}
+
+booking-events:
+  topic: reservation-events
 
 jwt:
   secret: ${JWT_SECRET}

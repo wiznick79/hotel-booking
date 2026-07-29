@@ -4,15 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.http.MediaType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import pt.hotelbooking.booking.model.entity.OutboxEvent;
 import pt.hotelbooking.booking.repository.OutboxEventRepository;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-import pt.hotelbooking.booking.config.NotificationServiceProperties;
 import pt.hotelbooking.booking.config.OutboxProperties;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.kafka.support.KafkaHeaders;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -27,11 +26,9 @@ public class LoggingEventPublisher implements EventPublisher {
 
     private final ObjectMapper objectMapper;
 
-    private final RestClient restClient;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    private final String notificationServiceUrl;
-
-    private final String notificationServiceToken;
+    private final String topic;
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
 
@@ -40,15 +37,14 @@ public class LoggingEventPublisher implements EventPublisher {
     public LoggingEventPublisher(
             OutboxEventRepository outboxRepository,
             ObjectMapper objectMapper,
-            RestClient.Builder restClientBuilder,
-            NotificationServiceProperties notificationServiceProperties,
+            KafkaTemplate<String, String> kafkaTemplate,
+            @org.springframework.beans.factory.annotation.Value("${booking-events.topic}") String topic,
             GuestAccessTokenCipher guestAccessTokenCipher,
             OutboxProperties outboxProperties) {
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
-        this.restClient = restClientBuilder.build();
-        this.notificationServiceUrl = notificationServiceProperties.url();
-        this.notificationServiceToken = notificationServiceProperties.serviceToken();
+        this.kafkaTemplate = kafkaTemplate;
+        this.topic = topic;
         this.guestAccessTokenCipher = guestAccessTokenCipher;
         this.outboxProperties = outboxProperties;
     }
@@ -90,23 +86,15 @@ public class LoggingEventPublisher implements EventPublisher {
 
         for (OutboxEvent event : events) {
             try {
-                restClient.mutate().baseUrl(notificationServiceUrl).build()
-                        .post()
-                        .uri(event.getEventType().equals("ReservationCreated")
-                                ? "/internal/events/reservation-created"
-                                : "/internal/events/reservation-event")
-                        .header("X-Internal-Service-Token", notificationServiceToken)
-                        .header("X-Correlation-Id", correlationId(event))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(event.getPayload())
-                        .retrieve()
-                        .toBodilessEntity();
+                kafkaTemplate.send(MessageBuilder.withPayload(event.getPayload())
+                        .setHeader(KafkaHeaders.TOPIC, topic)
+                        .setHeader(KafkaHeaders.KEY, event.getAggregateId().toString())
+                        .setHeader("eventType", event.getEventType())
+                        .setHeader("correlationId", correlationId(event))
+                        .build()).get();
                 event.markPublished();
-                log.info("Delivered outbox event {} to notification-service", event.getId());
-            } catch (RestClientException exception) {
-                log.warn("Could not deliver outbox event {}: {}", event.getId(), exception.getMessage());
-                markDeliveryFailure(event, exception);
-            } catch (RuntimeException exception) {
+                log.info("Published outbox event {} to Kafka topic {}", event.getId(), topic);
+            } catch (Exception exception) {
                 log.warn("Could not deliver outbox event {}", event.getId(), exception);
                 markDeliveryFailure(event, exception);
             }

@@ -14,6 +14,14 @@ spring:
       ddl-auto: update
   flyway:
     enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+
+booking-events:
+  topic: reservation-events
 
 notification:
   retry-delay-ms: 60000
