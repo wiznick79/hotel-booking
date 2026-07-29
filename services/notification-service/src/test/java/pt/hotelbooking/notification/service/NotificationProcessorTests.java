@@ -63,6 +63,7 @@ class NotificationProcessorTests {
                 UUID.randomUUID(),
                 email,
                 "Guest",
+                null,
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 12),
                 BigDecimal.valueOf(100),

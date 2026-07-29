@@ -256,6 +256,7 @@ public class ReservationService {
                 savedReservation.getId(),
                 savedReservation.getGuestEmail(),
                 savedReservation.getGuestName(),
+                guestAccessToken.rawToken(),
                 savedReservation.getHotelId(),
                 savedReservation.getCheckInDate(),
                 savedReservation.getCheckOutDate(),

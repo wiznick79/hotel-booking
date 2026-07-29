@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.util.List;
 
 @Component
-@Profile({"dev", "test"})
+@Profile({"dev", "test", "postgres"})
 @Slf4j
 public class LoggingEventPublisher implements EventPublisher {
 
@@ -31,23 +31,33 @@ public class LoggingEventPublisher implements EventPublisher {
 
     private final String notificationServiceToken;
 
+    private final GuestAccessTokenCipher guestAccessTokenCipher;
+
     public LoggingEventPublisher(
             OutboxEventRepository outboxRepository,
             ObjectMapper objectMapper,
             RestClient.Builder restClientBuilder,
             @Value("${notification-service.url:http://localhost:8084}") String notificationServiceUrl,
-            @Value("${notification-service.service-token:change-this-development-token}") String notificationServiceToken) {
+            @Value("${notification-service.service-token:change-this-development-token}") String notificationServiceToken,
+            GuestAccessTokenCipher guestAccessTokenCipher) {
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder.build();
         this.notificationServiceUrl = notificationServiceUrl;
         this.notificationServiceToken = notificationServiceToken;
+        this.guestAccessTokenCipher = guestAccessTokenCipher;
     }
 
     @Override
     @Transactional
     public void publish(ReservationCreatedEvent event) {
-        publishEvent("ReservationCreated", event.reservationId(), event);
+        ReservationCreatedEvent securedEvent = new ReservationCreatedEvent(
+                event.reservationId(), event.guestEmail(), event.guestName(),
+                event.encryptedGuestAccessToken() == null ? null
+                        : guestAccessTokenCipher.encrypt(event.encryptedGuestAccessToken()),
+                event.hotelId(), event.checkInDate(), event.checkOutDate(),
+                event.totalPrice(), event.currency());
+        publishEvent("ReservationCreated", event.reservationId(), securedEvent);
     }
 
     @Override

@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/hotel}
-    username: ${DB_USERNAME:hotel}
-    password: ${DB_PASSWORD:hotel}
+    url: ${HOTEL_DB_URL:jdbc:postgresql://localhost:5432/hotel_service}
+    username: ${HOTEL_DB_USERNAME:hotel_booking}
+    password: ${HOTEL_DB_PASSWORD:hotel_booking_dev_password}
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

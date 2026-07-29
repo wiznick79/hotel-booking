@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:postgresql://localhost:5432/notification_service}
+    username: ${NOTIFICATION_DB_USERNAME:hotel_booking}
+    password: ${NOTIFICATION_DB_PASSWORD:hotel_booking_dev_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update

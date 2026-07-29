@@ -16,23 +16,26 @@ public class NotificationProcessor {
 
     private final NotificationRepository notificationRepository;
 
+    private final GuestAccessTokenCipher guestAccessTokenCipher;
+
     @Transactional
     public void processReservationCreated(ReservationCreatedEvent event) {
         process(event.reservationId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
-                "ReservationCreated");
+                "ReservationCreated", event.encryptedGuestAccessToken());
     }
 
     @Transactional
     public void processReservationEvent(ReservationNotificationEvent event) {
         process(event.reservationId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
-                event.eventType());
+                event.eventType(), null);
     }
 
     private void process(java.util.UUID reservationId, String guestEmail, String guestName,
                          java.time.LocalDate checkInDate, java.time.LocalDate checkOutDate,
-                         java.math.BigDecimal totalPrice, String currency, String eventType) {
+                         java.math.BigDecimal totalPrice, String currency, String eventType,
+                         String encryptedGuestAccessToken) {
         if (guestEmail == null || guestEmail.isBlank()) {
             return;
         }
@@ -42,13 +45,17 @@ public class NotificationProcessor {
             return;
         }
 
+        String accessLink = encryptedGuestAccessToken == null ? ""
+                : " Guest access link: http://localhost:3000/reservations/guest/"
+                + guestAccessTokenCipher.decrypt(encryptedGuestAccessToken);
+
         notificationRepository.save(new Notification(
                 reservationId,
                 guestEmail,
                 subject,
                 "Hello " + guestName + ", your reservation event is: " + eventType
                         + ". Stay: " + checkInDate + " to " + checkOutDate
-                        + ". Total: " + totalPrice + " " + currency));
+                        + ". Total: " + totalPrice + " " + currency + "." + accessLink));
     }
 
     private String subjectFor(String eventType) {

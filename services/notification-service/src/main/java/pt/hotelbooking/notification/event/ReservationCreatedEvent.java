@@ -8,6 +8,7 @@ public record ReservationCreatedEvent(
         UUID reservationId,
         String guestEmail,
         String guestName,
+        String encryptedGuestAccessToken,
         LocalDate checkInDate,
         LocalDate checkOutDate,
         BigDecimal totalPrice,

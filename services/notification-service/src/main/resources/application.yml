@@ -18,3 +18,12 @@ notification:
 
 internal-events:
   service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}
+
+guest-access:
+  encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

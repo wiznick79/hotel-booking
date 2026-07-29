@@ -32,6 +32,9 @@ class LoggingEventPublisherTests {
     @Mock
     private RestClient.Builder restClientBuilder;
 
+    @Mock
+    private GuestAccessTokenCipher guestAccessTokenCipher;
+
     @InjectMocks
     private LoggingEventPublisher publisher;
 

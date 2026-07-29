@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: ${IDENTITY_DB_URL:jdbc:postgresql://localhost:5432/identity_service}
+    username: ${IDENTITY_DB_USERNAME:hotel_booking}
+    password: ${IDENTITY_DB_PASSWORD:hotel_booking_dev_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

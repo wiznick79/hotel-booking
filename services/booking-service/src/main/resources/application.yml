@@ -36,3 +36,5 @@ management:
     web:
       exposure:
         include: health,info
+guest-access:
+  encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}
