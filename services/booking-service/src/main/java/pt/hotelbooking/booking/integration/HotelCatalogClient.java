@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import org.slf4j.MDC;
 
 @Component
 public class HotelCatalogClient {
@@ -32,6 +33,14 @@ public class HotelCatalogClient {
 
         this.restClient = restClientBuilder
                 .requestFactory(requestFactory)
+                .requestInterceptor((request, body, execution) -> {
+                    String correlationId = MDC.get("correlationId");
+                    if (correlationId != null) {
+                        request.getHeaders().set("X-Correlation-Id", correlationId);
+                    }
+
+                    return execution.execute(request, body);
+                })
                 .build();
     }
 

@@ -64,10 +64,7 @@ create table outbox_events (
     payload text not null,
     created_at timestamp with time zone not null,
     published_at timestamp with time zone,
-    attempts integer not null,
-    next_attempt_at timestamp with time zone not null,
-    failed_at timestamp with time zone,
-    last_error text
+    attempts integer not null
 );
 
 create table audit_logs (

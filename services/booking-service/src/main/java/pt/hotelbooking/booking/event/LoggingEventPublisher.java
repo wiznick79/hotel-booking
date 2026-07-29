@@ -17,6 +17,7 @@ import pt.hotelbooking.booking.config.OutboxProperties;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.MDC;
 
 @Component
 @Slf4j
@@ -95,6 +96,7 @@ public class LoggingEventPublisher implements EventPublisher {
                                 ? "/internal/events/reservation-created"
                                 : "/internal/events/reservation-event")
                         .header("X-Internal-Service-Token", notificationServiceToken)
+                        .header("X-Correlation-Id", correlationId(event))
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(event.getPayload())
                         .retrieve()
@@ -133,5 +135,10 @@ public class LoggingEventPublisher implements EventPublisher {
         }
 
         return message.length() <= 2_000 ? message : message.substring(0, 2_000);
+    }
+
+    private String correlationId(OutboxEvent event) {
+        String correlationId = MDC.get("correlationId");
+        return correlationId == null ? event.getId().toString() : correlationId;
     }
 }
