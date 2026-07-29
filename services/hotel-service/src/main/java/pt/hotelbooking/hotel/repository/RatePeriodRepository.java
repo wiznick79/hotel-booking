@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface RatePeriodRepository extends JpaRepository<RatePeriod, UUID> {
 
     List<RatePeriod> findByRoomTypeId(UUID roomTypeId);
+
+    boolean existsByRoomTypeIdAndStartDateLessThanAndEndDateGreaterThan(
+            UUID roomTypeId, java.time.LocalDate endDate, java.time.LocalDate startDate);
 }

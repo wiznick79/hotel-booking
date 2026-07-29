@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.Set;
+import java.util.UUID;
 
 public record CreateUserRequest(
 
@@ -14,5 +15,8 @@ public record CreateUserRequest(
         @Size(min = 12)
         String password,
 
-        Set<String> roles) {
+        Set<String> roles,
+
+        @jakarta.validation.constraints.NotEmpty
+        Set<UUID> hotelIds) {
 }

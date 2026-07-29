@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
 import pt.hotelbooking.notification.event.ReservationNotificationEvent;
 import pt.hotelbooking.notification.model.Notification;
@@ -12,11 +14,15 @@ import pt.hotelbooking.notification.repository.NotificationRepository;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationProcessor {
 
     private final NotificationRepository notificationRepository;
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
+
+    @Value("${public-frontend.base-url:http://localhost:3000}")
+    private String publicFrontendBaseUrl;
 
     @Transactional
     public void processReservationCreated(ReservationCreatedEvent event) {
@@ -46,7 +52,7 @@ public class NotificationProcessor {
         }
 
         String accessLink = encryptedGuestAccessToken == null ? ""
-                : " Guest access link: http://localhost:3000/reservations/guest/"
+                : " Guest access link: " + publicFrontendBaseUrl + "/reservations/guest/"
                 + guestAccessTokenCipher.decrypt(encryptedGuestAccessToken);
 
         notificationRepository.save(new Notification(
@@ -77,8 +83,7 @@ public class NotificationProcessor {
 
     private void deliver(Notification notification) {
         try {
-            System.out.println("Sending notification to " + notification.getRecipient()
-                    + ": " + notification.getSubject());
+            log.info("Delivering notification {} with subject {}", notification.getId(), notification.getSubject());
             notification.markSent();
         } catch (RuntimeException exception) {
             notification.markFailed(exception.getMessage());

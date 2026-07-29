@@ -59,6 +59,13 @@ public class DiscountCodeService {
         discountCode.deactivate();
     }
 
+    @Transactional(readOnly = true)
+    public String findHotelId(UUID id) {
+        return discountCodeRepository.findById(id)
+                .map(DiscountCode::getHotelId)
+                .orElseThrow(() -> new IllegalArgumentException("Discount code not found."));
+    }
+
     private void validateRequest(DiscountCodeRequest request) {
         if (!request.validUntil().isAfter(request.validFrom())) {
             throw new IllegalArgumentException("Discount validity end must be after its start.");

@@ -30,6 +30,11 @@ public class RatePeriodService {
             throw new IllegalArgumentException("End date must be after start date.");
         }
 
+        if (ratePeriodRepo.existsByRoomTypeIdAndStartDateLessThanAndEndDateGreaterThan(
+                request.roomTypeId(), request.endDate(), request.startDate())) {
+            throw new IllegalArgumentException("The rate period overlaps an existing rate period.");
+        }
+
         var roomType = roomTypeRepo.findById(request.roomTypeId())
                 .orElseThrow(() -> new RoomTypeNotFoundException(request.roomTypeId()));
         RatePeriod ratePeriod = new RatePeriod(roomType, request.startDate(), request.endDate(),
@@ -42,6 +47,13 @@ public class RatePeriodService {
         return ratePeriodRepo.findByRoomTypeId(roomTypeId).stream()
                 .map(RatePeriodResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UUID findHotelIdByRoomType(UUID roomTypeId) {
+        return roomTypeRepo.findById(roomTypeId)
+                .map(roomType -> roomType.getHotel().getId())
+                .orElseThrow(() -> new RoomTypeNotFoundException(roomTypeId));
     }
 
     @Transactional(readOnly = true)

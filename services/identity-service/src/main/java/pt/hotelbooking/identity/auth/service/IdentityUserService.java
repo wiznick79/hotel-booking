@@ -9,6 +9,7 @@ import pt.hotelbooking.identity.auth.model.dto.CreateUserRequest;
 import pt.hotelbooking.identity.auth.model.dto.ChangeOwnPasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdatePasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdateRolesRequest;
+import pt.hotelbooking.identity.auth.model.dto.UpdateHotelAssignmentsRequest;
 import pt.hotelbooking.identity.auth.model.entity.IdentityRole;
 import pt.hotelbooking.identity.auth.model.entity.IdentityUser;
 import pt.hotelbooking.identity.auth.repository.IdentityRoleRepository;
@@ -35,6 +36,7 @@ public class IdentityUserService {
         user.setUsername(request.username());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRoles(resolveRoles(request.roles()));
+        user.setHotelIds(new HashSet<>(request.hotelIds()));
 
         return userRepository.save(user);
     }
@@ -43,6 +45,11 @@ public class IdentityUserService {
     public void updateRoles(Long userId, UpdateRolesRequest request) {
         IdentityUser user = findUser(userId);
         user.setRoles(resolveRoles(request.roles()));
+    }
+
+    @Transactional
+    public void updateHotelAssignments(Long userId, UpdateHotelAssignmentsRequest request) {
+        findUser(userId).setHotelIds(new HashSet<>(request.hotelIds()));
     }
 
     @Transactional

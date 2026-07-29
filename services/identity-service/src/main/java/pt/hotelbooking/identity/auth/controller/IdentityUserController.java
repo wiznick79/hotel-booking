@@ -17,6 +17,7 @@ import pt.hotelbooking.identity.auth.model.dto.CreateUserRequest;
 import pt.hotelbooking.identity.auth.model.dto.ChangeOwnPasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdatePasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdateRolesRequest;
+import pt.hotelbooking.identity.auth.model.dto.UpdateHotelAssignmentsRequest;
 import pt.hotelbooking.identity.auth.model.dto.UserResponse;
 import pt.hotelbooking.identity.auth.service.IdentityUserService;
 
@@ -49,6 +50,14 @@ public class IdentityUserController {
             @PathVariable Long userId,
             @Valid @RequestBody UpdateRolesRequest request) {
         userService.updateRoles(userId, request);
+    }
+
+    @PatchMapping("/{userId}/hotels")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateHotelAssignments(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateHotelAssignmentsRequest request) {
+        userService.updateHotelAssignments(userId, request);
     }
 
     @PatchMapping("/{userId}/password")

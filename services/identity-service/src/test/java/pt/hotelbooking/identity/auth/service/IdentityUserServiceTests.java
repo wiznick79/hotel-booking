@@ -47,7 +47,7 @@ class IdentityUserServiceTests {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         IdentityUser user = service.create(new CreateUserRequest(
-                "staff", "long-password", Set.of("STAFF")));
+                "staff", "long-password", Set.of("STAFF"), Set.of(java.util.UUID.randomUUID())));
 
         assertThat(user.getPassword()).isEqualTo("encoded");
         assertThat(user.getRoles()).containsExactly(role);
@@ -59,7 +59,7 @@ class IdentityUserServiceTests {
                 .thenReturn(Optional.of(new IdentityUser()));
 
         assertThatThrownBy(() -> service.create(new CreateUserRequest(
-                "staff", "long-password", Set.of())))
+                "staff", "long-password", Set.of(), Set.of(java.util.UUID.randomUUID()))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Username is already in use.");
     }

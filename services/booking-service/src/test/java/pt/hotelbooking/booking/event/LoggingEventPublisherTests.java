@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClient;
 import pt.hotelbooking.booking.model.entity.OutboxEvent;
 import pt.hotelbooking.booking.repository.OutboxEventRepository;
+import pt.hotelbooking.booking.config.NotificationServiceProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,6 +35,9 @@ class LoggingEventPublisherTests {
 
     @Mock
     private GuestAccessTokenCipher guestAccessTokenCipher;
+
+    @Mock
+    private NotificationServiceProperties notificationServiceProperties;
 
     @InjectMocks
     private LoggingEventPublisher publisher;

@@ -3,12 +3,14 @@ package pt.hotelbooking.identity.auth.model.dto;
 import pt.hotelbooking.identity.auth.model.entity.IdentityUser;
 
 import java.util.Set;
+import java.util.UUID;
 
 public record UserResponse(
         Long id,
         String username,
         boolean enabled,
-        Set<String> roles) {
+        Set<String> roles,
+        Set<UUID> hotelIds) {
 
     public static UserResponse from(IdentityUser user) {
         Set<String> roleNames = user.getRoles().stream()
@@ -19,6 +21,7 @@ public record UserResponse(
                 user.getId(),
                 user.getUsername(),
                 user.isEnabled(),
-                roleNames);
+                roleNames,
+                user.getHotelIds());
     }
 }

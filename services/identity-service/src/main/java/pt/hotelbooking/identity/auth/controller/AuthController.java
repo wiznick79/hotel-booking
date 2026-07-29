@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import pt.hotelbooking.identity.auth.service.PermissionService;
+import pt.hotelbooking.identity.auth.repository.IdentityUserRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,10 +31,13 @@ public class AuthController {
 
     private final PermissionService permissionService;
 
+    private final IdentityUserRepository userRepository;
+
     @PostMapping("/login")
     public TokenResponse login(@RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+        var user = userRepository.findByUsername(authentication.getName()).orElseThrow();
 
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -45,6 +49,7 @@ public class AuthController {
                         .toList())
                 .claim("permissions", permissionService.permissionsFor(
                         authentication.getAuthorities()))
+                .claim("hotelIds", user.getHotelIds().stream().map(Object::toString).toList())
                 .build();
 
         String token = jwtEncoder.encode(JwtEncoderParameters.from(

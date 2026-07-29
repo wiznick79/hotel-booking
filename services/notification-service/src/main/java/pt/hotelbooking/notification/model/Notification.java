@@ -6,6 +6,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -30,6 +31,7 @@ public class Notification {
 
     private String subject;
 
+    @Column(columnDefinition = "text")
     private String body;
 
     @Enumerated(EnumType.STRING)
@@ -39,6 +41,7 @@ public class Notification {
 
     private Instant lastAttemptAt;
 
+    @Column(columnDefinition = "text")
     private String lastError;
 
     public Notification(UUID reservationId, String recipient, String subject, String body) {

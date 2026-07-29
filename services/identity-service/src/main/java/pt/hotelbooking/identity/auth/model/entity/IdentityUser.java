@@ -1,6 +1,7 @@
 package pt.hotelbooking.identity.auth.model.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.HashSet;
+import java.util.UUID;
 import java.util.Set;
 
 @Entity
@@ -39,4 +41,9 @@ public class IdentityUser {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<IdentityRole> roles = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @JoinTable(name = "identity_user_hotels", joinColumns = @JoinColumn(name = "user_id"))
+    @jakarta.persistence.Column(name = "hotel_id", nullable = false)
+    private Set<UUID> hotelIds = new HashSet<>();
 }

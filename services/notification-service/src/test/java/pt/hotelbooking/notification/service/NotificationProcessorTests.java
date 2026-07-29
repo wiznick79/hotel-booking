@@ -64,6 +64,7 @@ class NotificationProcessorTests {
                 email,
                 "Guest",
                 null,
+                "hotel-1",
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 12),
                 BigDecimal.valueOf(100),

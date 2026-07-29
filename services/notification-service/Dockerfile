@@ -6,8 +6,12 @@ RUN chmod +x mvnw && ./mvnw -pl services/notification-service -am package -Dskip
 
 FROM eclipse-temurin:21-jre
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY --from=build /build/services/notification-service/target/notification-service-*.jar app.jar
+COPY --from=build /build/services/notification-service/target/notification-service-*-exec.jar app.jar
 
 EXPOSE 8084
+HEALTHCHECK --interval=10s --timeout=3s --retries=10 CMD curl --fail --silent http://localhost:8084/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -4,11 +4,13 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import pt.hotelbooking.hotel.model.dto.RoomTypeRequest;
 import pt.hotelbooking.hotel.model.dto.RoomTypeResponse;
 import pt.hotelbooking.hotel.service.RoomTypeService;
 import pt.hotelbooking.core.i18n.LanguageResolver;
+import pt.hotelbooking.hotel.config.HotelScopeAuthorization;
 
 import java.util.List;
 
@@ -24,7 +26,9 @@ public class RoomTypeController {
     @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
     @ResponseStatus(HttpStatus.CREATED)
     public RoomTypeResponse create(@Valid @RequestBody RoomTypeRequest request,
-                                   @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
+                                   @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage,
+                                   Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, request.hotelId());
         return roomTypeService.create(request, languageResolver.resolve(null, acceptLanguage));
     }
 

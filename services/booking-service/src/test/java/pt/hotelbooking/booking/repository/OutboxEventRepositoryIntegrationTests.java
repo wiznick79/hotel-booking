@@ -8,6 +8,7 @@ import pt.hotelbooking.booking.model.entity.OutboxEvent;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +34,8 @@ class OutboxEventRepositoryIntegrationTests {
         outboxEventRepository.saveAndFlush(second);
 
         List<OutboxEvent> events = outboxEventRepository
-                .findTop50ByPublishedAtIsNullOrderByCreatedAt();
+                .findTop50ByPublishedAtIsNullAndFailedAtIsNullAndNextAttemptAtLessThanEqualOrderByCreatedAt(
+                        Instant.now());
 
         assertThat(events).containsExactly(first, second);
     }

@@ -11,6 +11,7 @@ import pt.hotelbooking.booking.model.dto.ReservationResponse;
 import pt.hotelbooking.booking.model.dto.RoomReassignmentRequest;
 import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.service.ReservationService;
+import pt.hotelbooking.booking.config.HotelScopeAuthorization;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.Instant;
@@ -55,8 +56,25 @@ public class ReservationController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ReservationResponse findById(@PathVariable UUID id) {
-        return reservationService.findById(id);
+    public ReservationResponse findById(@PathVariable UUID id, Authentication authentication) {
+        ReservationResponse reservation = reservationService.findById(id);
+
+        if (hasAuthority(authentication, "RESERVATION_READ")) {
+            HotelScopeAuthorization.requireAccess(authentication, reservation.hotelId());
+            return reservation;
+        }
+
+        List<ReservationResponse> customerReservations = reservationService
+                .findMyReservations(authentication.getName());
+        boolean belongsToCustomer = customerReservations.stream()
+                .anyMatch(customerReservation -> customerReservation.id().equals(id));
+
+        if (!belongsToCustomer) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You can only access your own reservations.");
+        }
+
+        return reservation;
     }
 
     @GetMapping
@@ -64,7 +82,9 @@ public class ReservationController {
     public List<ReservationResponse> findByHotelAndDateRange(
             @RequestParam String hotelId,
             @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
+            @RequestParam LocalDate to,
+            Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, hotelId);
         return reservationService.findByHotelAndDateRange(hotelId, from, to);
     }
 
@@ -73,27 +93,41 @@ public class ReservationController {
     public List<ReservationResponse> findAffectedByRoomAndDateRange(
             @PathVariable String roomId,
             @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
+            @RequestParam LocalDate to,
+            @RequestParam String hotelId,
+            Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, hotelId);
         return reservationService.findAffectedByRoomAndDateRange(roomId, from, to);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void cancel(@PathVariable UUID id) {
-        reservationService.cancel(id);
+    public void cancel(@PathVariable UUID id, Authentication authentication) {
+        ReservationResponse reservation = reservationService.findById(id);
+
+        if (hasAuthority(authentication, "RESERVATION_MANAGE")) {
+            HotelScopeAuthorization.requireAccess(authentication, reservation.hotelId());
+            reservationService.cancel(id);
+            return;
+        }
+
+        reservationService.cancelByCustomer(id, authentication.getName());
     }
 
     @PatchMapping("/{id}/confirm")
     @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
     public ReservationResponse confirm(@PathVariable UUID id, Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
         return reservationService.confirm(id, authentication.getName());
     }
 
     @PatchMapping("/{id}/hold")
     @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
     public ReservationResponse placeHold(@PathVariable UUID id,
-                                         @RequestParam Instant holdUntil) {
+                                         @RequestParam Instant holdUntil,
+                                         Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
         return reservationService.placeHold(id, holdUntil);
     }
 
@@ -102,6 +136,17 @@ public class ReservationController {
     public ReservationResponse reassignRoom(@PathVariable UUID id,
                                             @Valid @RequestBody RoomReassignmentRequest request,
                                             Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
         return reservationService.reassignRoom(id, request, authentication.getName());
+    }
+
+    private void requireStaffHotelAccess(UUID reservationId, Authentication authentication) {
+        ReservationResponse reservation = reservationService.findById(reservationId);
+        HotelScopeAuthorization.requireAccess(authentication, reservation.hotelId());
+    }
+
+    private boolean hasAuthority(Authentication authentication, String authority) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
     }
 }

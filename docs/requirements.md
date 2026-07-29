@@ -88,6 +88,8 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Booking confirmation emails must be sent asynchronously where practical.
 - Notifications must be retryable and idempotent.
 - Failed notifications must be observable and recoverable.
+- Reservation notification events must use a transactional outbox. Failed delivery attempts use exponential backoff,
+  become terminal after a configured maximum, and can be inspected and manually replayed by an administrator.
 - Email is the first notification channel. SMS delivery for phone-only bookings is a later provider integration.
 - Development may use a logging notification provider, but production must use a real delivery provider and must never log raw access tokens.
 

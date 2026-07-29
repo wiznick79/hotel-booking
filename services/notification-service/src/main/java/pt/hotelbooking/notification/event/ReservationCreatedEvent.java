@@ -9,6 +9,7 @@ public record ReservationCreatedEvent(
         String guestEmail,
         String guestName,
         String encryptedGuestAccessToken,
+        String hotelId,
         LocalDate checkInDate,
         LocalDate checkOutDate,
         BigDecimal totalPrice,

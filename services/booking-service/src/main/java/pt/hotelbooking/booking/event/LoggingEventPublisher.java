@@ -1,23 +1,24 @@
 package pt.hotelbooking.booking.event;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.MediaType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import pt.hotelbooking.booking.model.entity.OutboxEvent;
 import pt.hotelbooking.booking.repository.OutboxEventRepository;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.beans.factory.annotation.Value;
+import pt.hotelbooking.booking.config.NotificationServiceProperties;
+import pt.hotelbooking.booking.config.OutboxProperties;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @Component
-@Profile({"dev", "test", "postgres"})
 @Slf4j
 public class LoggingEventPublisher implements EventPublisher {
 
@@ -33,19 +34,22 @@ public class LoggingEventPublisher implements EventPublisher {
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
 
+    private final OutboxProperties outboxProperties;
+
     public LoggingEventPublisher(
             OutboxEventRepository outboxRepository,
             ObjectMapper objectMapper,
             RestClient.Builder restClientBuilder,
-            @Value("${notification-service.url:http://localhost:8084}") String notificationServiceUrl,
-            @Value("${notification-service.service-token:change-this-development-token}") String notificationServiceToken,
-            GuestAccessTokenCipher guestAccessTokenCipher) {
+            NotificationServiceProperties notificationServiceProperties,
+            GuestAccessTokenCipher guestAccessTokenCipher,
+            OutboxProperties outboxProperties) {
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.restClient = restClientBuilder.build();
-        this.notificationServiceUrl = notificationServiceUrl;
-        this.notificationServiceToken = notificationServiceToken;
+        this.notificationServiceUrl = notificationServiceProperties.url();
+        this.notificationServiceToken = notificationServiceProperties.serviceToken();
         this.guestAccessTokenCipher = guestAccessTokenCipher;
+        this.outboxProperties = outboxProperties;
     }
 
     @Override
@@ -79,7 +83,9 @@ public class LoggingEventPublisher implements EventPublisher {
 
     @Scheduled(fixedDelayString = "${booking.outbox.dispatch-delay-ms:5000}")
     public void dispatchPendingEvents() {
-        List<OutboxEvent> events = outboxRepository.findTop50ByPublishedAtIsNullOrderByCreatedAt();
+        List<OutboxEvent> events = outboxRepository
+                .findTop50ByPublishedAtIsNullAndFailedAtIsNullAndNextAttemptAtLessThanEqualOrderByCreatedAt(
+                        Instant.now());
 
         for (OutboxEvent event : events) {
             try {
@@ -89,6 +95,7 @@ public class LoggingEventPublisher implements EventPublisher {
                                 ? "/internal/events/reservation-created"
                                 : "/internal/events/reservation-event")
                         .header("X-Internal-Service-Token", notificationServiceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .body(event.getPayload())
                         .retrieve()
                         .toBodilessEntity();
@@ -96,12 +103,35 @@ public class LoggingEventPublisher implements EventPublisher {
                 log.info("Delivered outbox event {} to notification-service", event.getId());
             } catch (RestClientException exception) {
                 log.warn("Could not deliver outbox event {}: {}", event.getId(), exception.getMessage());
-                event.markAttempted();
+                markDeliveryFailure(event, exception);
             } catch (RuntimeException exception) {
-                event.markAttempted();
+                log.warn("Could not deliver outbox event {}", event.getId(), exception);
+                markDeliveryFailure(event, exception);
             }
 
             outboxRepository.save(event);
         }
+    }
+
+    private void markDeliveryFailure(OutboxEvent event, Exception exception) {
+        int nextAttemptNumber = event.getAttempts() + 1;
+        long multiplier = 1L << Math.min(nextAttemptNumber - 1, 20);
+        long retryDelaySeconds = Math.min(
+                outboxProperties.initialRetryDelaySeconds() * multiplier,
+                outboxProperties.maximumRetryDelaySeconds());
+        Instant nextAttemptAt = Instant.now().plus(Duration.ofSeconds(retryDelaySeconds));
+
+        event.markAttempted(
+                abbreviateError(exception.getMessage()),
+                nextAttemptAt,
+                outboxProperties.maximumAttempts());
+    }
+
+    private String abbreviateError(String message) {
+        if (message == null) {
+            return "Unexpected event delivery failure.";
+        }
+
+        return message.length() <= 2_000 ? message : message.substring(0, 2_000);
     }
 }

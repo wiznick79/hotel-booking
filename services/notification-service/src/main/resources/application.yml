@@ -18,6 +18,9 @@ spring:
 notification:
   retry-delay-ms: 60000
 
+public-frontend:
+  base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3000}
+
 internal-events:
   service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}
 

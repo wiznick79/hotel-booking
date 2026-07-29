@@ -107,6 +107,23 @@ public class ReservationService {
         Reservation reservation = reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
+        cancel(reservation);
+    }
+
+    @Transactional
+    public void cancelByCustomer(UUID id, String customerUsername) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        if (!customerUsername.equals(reservation.getCustomerUsername())) {
+            throw new IllegalStateException("You can only cancel your own reservations.");
+        }
+
+        cancel(reservation);
+    }
+
+    private void cancel(Reservation reservation) {
+
         if (reservation.getStatus() == ReservationStatus.CANCELLED
                 || reservation.getStatus() == ReservationStatus.CHECKED_OUT) {
             throw new IllegalStateException("Reservation cannot be cancelled in its current status.");
