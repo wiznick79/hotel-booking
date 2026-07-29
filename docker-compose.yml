@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: hotel-booking-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - hotel-booking-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api-gateway:
     build:
       context: .
@@ -7,10 +19,13 @@ services:
       IDENTITY_SERVICE_URL: http://identity-service:8083
       HOTEL_SERVICE_URL: http://hotel-service:8081
       BOOKING_SERVICE_URL: http://booking-service:8082
+      REDIS_HOST: redis
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - "8080:8080"
     depends_on:
+      redis:
+        condition: service_healthy
       hotel-service:
         condition: service_healthy
       booking-service:
@@ -46,10 +61,13 @@ services:
       HOTEL_DB_URL: jdbc:postgresql://postgres:5432/hotel_service
       HOTEL_DB_USERNAME: hotel_booking
       HOTEL_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
+      REDIS_HOST: redis
     ports:
       - "8081:8081"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   booking-service:
@@ -111,3 +129,4 @@ services:
 
 volumes:
   hotel-booking-postgres-data:
+  hotel-booking-redis-data:

@@ -2,6 +2,8 @@ package pt.hotelbooking.hotel.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import lombok.RequiredArgsConstructor;
 import pt.hotelbooking.hotel.exception.HotelNotFoundException;
 import pt.hotelbooking.hotel.model.dto.HotelRequest;
@@ -18,16 +20,19 @@ public class HotelService {
     private final HotelRepository hotelRepo;
 
     @Transactional(readOnly = true)
+    @Cacheable("hotel-list")
     public List<HotelResponse> findAll() {
         return hotelRepo.findAll().stream().map(HotelResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "hotels", key = "#id")
     public HotelResponse findById(UUID id) {
         return HotelResponse.from(findEntity(id));
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "hotel-list", allEntries = true)
     public HotelResponse create(HotelRequest request) {
         Hotel hotel = new Hotel(request.name(), request.description(), request.address(), request.city(),
                 request.country(), request.defaultLanguage() == null ? "en" : request.defaultLanguage());
@@ -36,6 +41,7 @@ public class HotelService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"hotel-list", "hotels"}, key = "#id")
     public void deactivate(UUID id) {
         Hotel hotel = findEntity(id);
 

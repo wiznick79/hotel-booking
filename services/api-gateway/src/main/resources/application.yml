@@ -6,6 +6,30 @@ spring:
       server:
         webflux:
           routes:
+            - id: public-login-rate-limit
+              uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/auth/login
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@clientIpKeyResolver}"
+            - id: public-booking-rate-limit
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/reservations
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@clientIpKeyResolver}"
             - id: identity-service
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
               predicates:
@@ -24,6 +48,10 @@ spring:
       allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
       allowed-headers: Authorization,Content-Type
       exposed-headers: Location
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 server:
   port: 8080
