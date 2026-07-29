@@ -31,7 +31,6 @@ import pt.hotelbooking.hotel.service.RatePeriodService;
 import pt.hotelbooking.hotel.service.RoomService;
 import pt.hotelbooking.hotel.service.RoomTypeService;
 import pt.hotelbooking.notification.NotificationServiceApplication;
-import pt.hotelbooking.notification.config.InternalEventsProperties;
 import pt.hotelbooking.notification.repository.NotificationRepository;
 
 import java.math.BigDecimal;
@@ -44,8 +43,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 class BookingWorkflowIntegrationTests {
-
-    private static final String INTERNAL_SERVICE_TOKEN = "change-this-development-token";
 
     private static final String RESERVATION_EVENTS_TOPIC = "reservation-events";
 
@@ -64,9 +61,6 @@ class BookingWorkflowIntegrationTests {
             hotelContext = startHotelService();
             notificationContext = startNotificationService();
             bookingContext = startBookingService(portOf(hotelContext));
-
-            assertThat(notificationContext.getBean(InternalEventsProperties.class).serviceToken())
-                    .isEqualTo(INTERNAL_SERVICE_TOKEN);
 
             RoomResponse room = seedHotel(hotelContext);
             ReservationResponse reservation = bookingContext.getBean(ReservationService.class).create(
@@ -107,7 +101,6 @@ class BookingWorkflowIntegrationTests {
 
     private ConfigurableApplicationContext startNotificationService() {
         Map<String, Object> properties = commonProperties("notification-integration");
-        properties.put("internal-events.service-token", INTERNAL_SERVICE_TOKEN);
         properties.put("notification.retry-delay-ms", "3600000");
         properties.put("spring.kafka.bootstrap-servers", KAFKA.getBootstrapServers());
         properties.put("spring.kafka.consumer.group-id", "notification-service-integration-test");

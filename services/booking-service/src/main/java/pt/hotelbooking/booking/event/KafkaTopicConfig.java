@@ -16,4 +16,12 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    NewTopic reservationEventsDeadLetterTopic(@Value("${booking-events.topic}") String topic) {
+        return TopicBuilder.name(topic + ".DLT")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
 }

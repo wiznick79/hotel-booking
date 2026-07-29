@@ -25,12 +25,12 @@ booking-events:
 
 notification:
   retry-delay-ms: 60000
+  kafka:
+    retry-delay-ms: 1000
+    max-retries: 3
 
 public-frontend:
   base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3000}
-
-internal-events:
-  service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}
 
 guest-access:
   encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}

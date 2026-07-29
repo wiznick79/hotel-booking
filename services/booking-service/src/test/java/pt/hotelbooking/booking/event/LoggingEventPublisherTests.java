@@ -8,10 +8,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestClient;
+import org.springframework.kafka.core.KafkaTemplate;
+import pt.hotelbooking.booking.config.OutboxProperties;
 import pt.hotelbooking.booking.model.entity.OutboxEvent;
 import pt.hotelbooking.booking.repository.OutboxEventRepository;
-import pt.hotelbooking.booking.config.NotificationServiceProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,13 +31,13 @@ class LoggingEventPublisherTests {
             .registerModule(new JavaTimeModule());
 
     @Mock
-    private RestClient.Builder restClientBuilder;
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Mock
     private GuestAccessTokenCipher guestAccessTokenCipher;
 
     @Mock
-    private NotificationServiceProperties notificationServiceProperties;
+    private OutboxProperties outboxProperties;
 
     @InjectMocks
     private LoggingEventPublisher publisher;

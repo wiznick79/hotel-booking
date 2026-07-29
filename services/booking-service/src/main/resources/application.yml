@@ -35,10 +35,6 @@ hotel-service:
   connect-timeout-ms: ${HOTEL_SERVICE_CONNECT_TIMEOUT_MS:2000}
   read-timeout-ms: ${HOTEL_SERVICE_READ_TIMEOUT_MS:5000}
 
-notification-service:
-  url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
-  service-token: ${NOTIFICATION_INTERNAL_SERVICE_TOKEN:change-this-development-token}
-
 booking-events:
   topic: reservation-events
 
