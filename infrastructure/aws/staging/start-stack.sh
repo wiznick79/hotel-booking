@@ -44,7 +44,7 @@ EOF
 
 mv "$temporary_environment_file" "$runtime_directory/.env"
 
-docker compose \
+COMPOSE_BAKE=false docker compose \
   --env-file "$runtime_directory/.env" \
   -f "$application_directory/docker-compose.yml" \
   -f "$application_directory/docker-compose.staging.yml" \

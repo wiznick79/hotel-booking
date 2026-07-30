@@ -97,3 +97,5 @@ The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted 
 - `/hotel-booking/staging/notification-email-from`.
 
 Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.
+
+The current learning host builds source on the EC2 instance. Its Compose plugin defaults to Docker Bake, while the installed Docker package does not include the Buildx plugin, so the script explicitly uses Compose's compatible non-Bake builder. A later improvement will build immutable images in CI and pull them from a registry instead.
