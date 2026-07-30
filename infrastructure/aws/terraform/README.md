@@ -82,3 +82,18 @@ Before triggering the workflow, configure these GitHub repository variables from
 - `AWS_STAGING_HOST_INSTANCE_ID`.
 
 The workflow delivers source only. It deliberately does not start Docker Compose until staging secrets and reverse-proxy configuration are added.
+
+## Staging runtime configuration
+
+The base `docker-compose.yml` remains a local-development setup. The host uses `docker-compose.staging.yml` to keep PostgreSQL, Kafka, Redis, Mailpit, and the individual services private. Only the gateway binds to `127.0.0.1:8080`; it can be reached temporarily through an SSM port-forwarding session until a reverse proxy and TLS are configured.
+
+The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted Systems Manager Parameter Store values and writes a root-only runtime environment file outside the deployed Git checkout:
+
+- `/hotel-booking/staging/postgres-password`;
+- `/hotel-booking/staging/jwt-secret`;
+- `/hotel-booking/staging/guest-access-encryption-secret`;
+- `/hotel-booking/staging/grafana-admin-password`;
+- `/hotel-booking/staging/cors-allowed-origins`;
+- `/hotel-booking/staging/notification-email-from`.
+
+Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.

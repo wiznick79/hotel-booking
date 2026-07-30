@@ -54,6 +54,16 @@ data "aws_iam_policy_document" "staging_host_artifact_read" {
 
     resources = ["${aws_s3_bucket.deployment_artifacts.arn}/releases/*"]
   }
+
+  statement {
+    effect = "Allow"
+
+    actions = ["ssm:GetParameter"]
+
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/hotel-booking/staging/*"
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "staging_host_artifact_read" {
