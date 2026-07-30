@@ -151,13 +151,16 @@ class BookingWorkflowIntegrationTests {
         properties.put("spring.kafka.consumer.group-id", "notification-service-integration-test");
         properties.put("spring.kafka.consumer.auto-offset-reset", "earliest");
         properties.put("booking-events.topic", RESERVATION_EVENTS_TOPIC);
+        properties.put("spring.mail.host", "localhost");
+        properties.put("spring.mail.port", "1025");
+        properties.put("notification.email.from", "no-reply@integration.test");
         properties.put(
                 "spring.autoconfigure.exclude",
                 "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,"
                         + "org.springframework.boot.actuate.autoconfigure.security.servlet."
                         + "ManagementWebSecurityAutoConfiguration");
 
-        return startApplication(NotificationServiceApplication.class, properties);
+        return startApplication(NotificationServiceApplication.class, properties, "test");
     }
 
     private ConfigurableApplicationContext startBookingService(int hotelPort) {
