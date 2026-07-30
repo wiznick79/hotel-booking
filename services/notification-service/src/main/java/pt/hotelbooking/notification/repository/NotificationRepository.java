@@ -12,4 +12,6 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     boolean existsByReservationIdAndSubject(UUID reservationId, String subject);
 
     List<Notification> findByStatusAndAttemptsLessThan(NotificationStatus status, int attempts);
+
+    List<Notification> findAllByOrderByLastAttemptAtDesc();
 }

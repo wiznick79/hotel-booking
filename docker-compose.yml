@@ -172,8 +172,9 @@ services:
       SPRING_PROFILES_ACTIVE: postgres
       NOTIFICATION_DB_URL: jdbc:postgresql://postgres:5432/notification_service
       NOTIFICATION_DB_USERNAME: hotel_booking
-      NOTIFICATION_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
-      GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
+        NOTIFICATION_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
+        JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-me}
+        GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MAIL_HOST: mailpit
       MAIL_PORT: 1025

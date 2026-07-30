@@ -381,6 +381,7 @@ public class ReservationService {
         eventPublisher.publish(new pt.hotelbooking.booking.event.ReservationNotificationEvent(
                 eventType,
                 reservation.getId(),
+                reservation.getHotelId(),
                 reservation.getGuestEmail(),
                 reservation.getGuestName(),
                 reservation.getCheckInDate(),

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
 import pt.hotelbooking.notification.model.Notification;
 import pt.hotelbooking.notification.model.NotificationStatus;
@@ -66,7 +67,8 @@ class NotificationProcessorTests {
     @Test
     void shouldSendPendingNotificationThroughEmailSender() {
         Notification notification = new Notification(
-                UUID.randomUUID(), "guest@example.com", "Subject", "Message");
+                UUID.randomUUID(), "hotel-1", "guest@example.com", "Subject", "Message");
+        ReflectionTestUtils.setField(notificationProcessor, "maximumAttempts", 3);
         when(notificationRepository.findByStatusAndAttemptsLessThan(NotificationStatus.PENDING, 3))
                 .thenReturn(List.of(notification));
 

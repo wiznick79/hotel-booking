@@ -31,19 +31,19 @@ public class NotificationProcessor {
 
     @Transactional
     public void processReservationCreated(ReservationCreatedEvent event) {
-        process(event.reservationId(), event.guestEmail(), event.guestName(),
+        process(event.reservationId(), event.hotelId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
                 "ReservationCreated", event.encryptedGuestAccessToken());
     }
 
     @Transactional
     public void processReservationEvent(ReservationNotificationEvent event) {
-        process(event.reservationId(), event.guestEmail(), event.guestName(),
+        process(event.reservationId(), event.hotelId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
                 event.eventType(), null);
     }
 
-    private void process(java.util.UUID reservationId, String guestEmail, String guestName,
+    private void process(java.util.UUID reservationId, String hotelId, String guestEmail, String guestName,
                          java.time.LocalDate checkInDate, java.time.LocalDate checkOutDate,
                          java.math.BigDecimal totalPrice, String currency, String eventType,
                          String encryptedGuestAccessToken) {
@@ -62,6 +62,7 @@ public class NotificationProcessor {
 
         notificationRepository.save(new Notification(
                 reservationId,
+                hotelId,
                 guestEmail,
                 subject,
                 "Hello " + guestName + ", your reservation event is: " + eventType
@@ -82,7 +83,7 @@ public class NotificationProcessor {
     @Transactional
     @Scheduled(fixedDelayString = "${notification.retry-delay-ms:60000}")
     public void deliverPendingNotifications() {
-        notificationRepository.findByStatusAndAttemptsLessThan(NotificationStatus.PENDING, 3)
+        notificationRepository.findByStatusAndAttemptsLessThan(NotificationStatus.PENDING, maximumAttempts)
                 .forEach(this::deliver);
     }
 

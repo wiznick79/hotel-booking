@@ -27,6 +27,8 @@ public class Notification {
 
     private UUID reservationId;
 
+    private String hotelId;
+
     private String recipient;
 
     private String subject;
@@ -44,8 +46,9 @@ public class Notification {
     @Column(columnDefinition = "text")
     private String lastError;
 
-    public Notification(UUID reservationId, String recipient, String subject, String body) {
+    public Notification(UUID reservationId, String hotelId, String recipient, String subject, String body) {
         this.reservationId = reservationId;
+        this.hotelId = hotelId;
         this.recipient = recipient;
         this.subject = subject;
         this.body = body;
@@ -63,5 +66,12 @@ public class Notification {
         lastAttemptAt = Instant.now();
         lastError = error;
         status = attempts >= maximumAttempts ? NotificationStatus.FAILED : NotificationStatus.PENDING;
+    }
+
+    public void requeue() {
+        status = NotificationStatus.PENDING;
+        attempts = 0;
+        lastAttemptAt = null;
+        lastError = null;
     }
 }

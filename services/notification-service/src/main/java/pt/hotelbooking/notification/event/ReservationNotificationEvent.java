@@ -7,6 +7,7 @@ import java.util.UUID;
 public record ReservationNotificationEvent(
         String eventType,
         UUID reservationId,
+        String hotelId,
         String guestEmail,
         String guestName,
         LocalDate checkInDate,

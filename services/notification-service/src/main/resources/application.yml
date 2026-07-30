@@ -41,6 +41,9 @@ public-frontend:
 guest-access:
   encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}
 
+jwt:
+  secret: ${JWT_SECRET:local-development-jwt-secret-change-me}
+
 management:
   metrics:
     tags:

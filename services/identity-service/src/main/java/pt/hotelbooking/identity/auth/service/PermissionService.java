@@ -41,7 +41,8 @@ public class PermissionService {
                     Permission.ROOM_READ,
                     Permission.ROOM_MANAGE,
                     Permission.RESERVATION_READ,
-                    Permission.RESERVATION_MANAGE));
+                    Permission.RESERVATION_MANAGE,
+                    Permission.NOTIFICATION_MANAGE));
             case "ROLE_CUSTOMER" -> permissions.addAll(EnumSet.of(
                     Permission.HOTEL_READ,
                     Permission.ROOM_READ,
