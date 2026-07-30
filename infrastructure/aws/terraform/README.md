@@ -82,11 +82,11 @@ Before triggering the workflow, configure these GitHub repository variables from
 - `AWS_DEPLOY_ROLE_ARN`;
 - `AWS_STAGING_HOST_INSTANCE_ID`.
 
-The workflow delivers source only. It deliberately does not start Docker Compose until staging secrets and reverse-proxy configuration are added.
+The workflow delivers source, then uses Systems Manager to start or update the staging Compose stack.
 
 ## Staging runtime configuration
 
-The base `docker-compose.yml` remains a local-development setup. The host uses `docker-compose.staging.yml` to keep PostgreSQL, Kafka, Redis, Mailpit, and the individual services private. Only the gateway binds to `127.0.0.1:8080`; it can be reached temporarily through an SSM port-forwarding session until a reverse proxy and TLS are configured.
+The base `docker-compose.yml` remains a local-development setup. The host uses `docker-compose.staging.yml` to keep PostgreSQL, Kafka, Redis, Mailpit, and the individual services private. The gateway additionally binds to `127.0.0.1:8080` for host-side diagnostics; public requests pass through Caddy only.
 
 The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted Systems Manager Parameter Store values and writes a root-only runtime environment file outside the deployed Git checkout:
 
@@ -98,5 +98,11 @@ The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted 
 - `/hotel-booking/staging/notification-email-from`.
 
 Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.
+
+## Public HTTPS endpoint
+
+The staging Compose override runs Caddy as the only public entry point. Caddy obtains and renews a certificate for `hotel.wiznick.net`, redirects HTTP to HTTPS, and proxies requests to the internal API gateway. PostgreSQL, Kafka, Redis, Mailpit, and the individual services have no public ports; the gateway is additionally bound to loopback for host-side diagnostics only.
+
+The gateway trusts `X-Forwarded-For` only in the staging override, where Caddy is the public entry point. Caddy discards client-supplied forwarding headers before passing the real client address upstream, allowing public rate limits to operate per client rather than treating every request as Caddy.
 
 The current learning host builds source on the EC2 instance. Its bootstrap script installs checksum-verified Docker Compose and Docker Buildx plugins, which Compose uses for service builds. A later improvement will build immutable images in CI and pull them from a registry instead.

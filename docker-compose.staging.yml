@@ -1,4 +1,18 @@
 services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    container_name: hotel-booking-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - hotel-booking-caddy-data:/data
+      - hotel-booking-caddy-config:/config
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
   kafka:
     ports: !reset []
 
@@ -21,6 +35,8 @@ services:
     ports: !reset []
 
   api-gateway:
+    environment:
+      TRUST_FORWARDED_HEADERS: "true"
     ports: !override
       - "127.0.0.1:8080:8080"
 
@@ -35,3 +51,7 @@ services:
 
   notification-service:
     ports: !reset []
+
+volumes:
+  hotel-booking-caddy-data:
+  hotel-booking-caddy-config:

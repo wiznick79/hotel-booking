@@ -84,6 +84,7 @@ server:
 
 app:
   use-swagger: ${USE_SWAGGER:false}
+  trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
 
 springdoc:
   api-docs:
