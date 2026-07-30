@@ -14,3 +14,11 @@ Desktop.ini
 infrastructure/.data/
 services/**/data/
 data/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+terraform.tfvars
