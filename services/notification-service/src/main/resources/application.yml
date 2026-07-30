@@ -1,6 +1,15 @@
 server:
   port: 8084
 
+app:
+  use-swagger: ${USE_SWAGGER:false}
+
+springdoc:
+  api-docs:
+    enabled: ${app.use-swagger}
+  swagger-ui:
+    enabled: ${app.use-swagger}
+
 spring:
   application:
     name: notification-service

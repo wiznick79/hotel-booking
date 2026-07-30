@@ -36,6 +36,30 @@ spring:
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/auth/**,/api/users/**
+            - id: hotel-service-openapi
+              uri: ${HOTEL_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/swagger/hotel-service/v3/api-docs
+              filters:
+                - StripPrefix=2
+            - id: booking-service-openapi
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/swagger/booking-service/v3/api-docs
+              filters:
+                - StripPrefix=2
+            - id: identity-service-openapi
+              uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/swagger/identity-service/v3/api-docs
+              filters:
+                - StripPrefix=2
+            - id: notification-service-openapi
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/swagger/notification-service/v3/api-docs
+              filters:
+                - StripPrefix=2
             - id: hotel-service
               uri: ${HOTEL_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -57,6 +81,24 @@ spring:
 
 server:
   port: 8080
+
+app:
+  use-swagger: ${USE_SWAGGER:false}
+
+springdoc:
+  api-docs:
+    enabled: ${app.use-swagger}
+  swagger-ui:
+    enabled: ${app.use-swagger}
+    urls:
+      - name: hotel-service
+        url: /swagger/hotel-service/v3/api-docs
+      - name: booking-service
+        url: /swagger/booking-service/v3/api-docs
+      - name: identity-service
+        url: /swagger/identity-service/v3/api-docs
+      - name: notification-service
+        url: /swagger/notification-service/v3/api-docs
 
 management:
   metrics:

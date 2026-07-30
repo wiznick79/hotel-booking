@@ -29,6 +29,15 @@ jwt:
 server:
   port: 8081
 
+app:
+  use-swagger: ${USE_SWAGGER:false}
+
+springdoc:
+  api-docs:
+    enabled: ${app.use-swagger}
+  swagger-ui:
+    enabled: ${app.use-swagger}
+
 management:
   metrics:
     tags:

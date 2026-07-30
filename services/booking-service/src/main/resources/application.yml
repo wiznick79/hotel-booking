@@ -19,6 +19,15 @@ spring:
 server:
   port: 8082
 
+app:
+  use-swagger: ${USE_SWAGGER:false}
+
+springdoc:
+  api-docs:
+    enabled: ${app.use-swagger}
+  swagger-ui:
+    enabled: ${app.use-swagger}
+
 booking:
   guest-access:
     grace-period-days: 7
