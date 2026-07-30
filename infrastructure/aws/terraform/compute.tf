@@ -39,6 +39,12 @@ resource "aws_instance" "staging_host" {
     echo "f9ebc6ebdb19d769b793c245a736caaeb198c62587f13b25c660c13b4987f959  /usr/local/lib/docker/cli-plugins/docker-compose" | sha256sum --check
     chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
 
+    curl --fail --location --silent --show-error \
+      --output /usr/local/lib/docker/cli-plugins/docker-buildx \
+      https://github.com/docker/buildx/releases/download/v0.36.0/buildx-v0.36.0.linux-amd64
+    echo "07823fdfcd82a41be90155a8b16876c1a780a6462de805a9f3f63b3119ccfb99  /usr/local/lib/docker/cli-plugins/docker-buildx" | sha256sum --check
+    chmod 0755 /usr/local/lib/docker/cli-plugins/docker-buildx
+
     install -d -o ec2-user -g ec2-user /opt/hotel-booking
   EOF
 
