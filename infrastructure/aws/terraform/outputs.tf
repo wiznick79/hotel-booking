@@ -18,9 +18,9 @@ output "staging_host_instance_id" {
   value       = aws_instance.staging_host.id
 }
 
-output "staging_host_public_ip" {
-  description = "Ephemeral public IP address of the staging host. It will change after stop/start until an Elastic IP is intentionally introduced."
-  value       = aws_instance.staging_host.public_ip
+output "staging_host_elastic_ip" {
+  description = "Stable Elastic IP address for the staging host. Point the staging DNS A record at this address."
+  value       = aws_eip.staging_host.public_ip
 }
 
 output "deployment_artifact_bucket_name" {

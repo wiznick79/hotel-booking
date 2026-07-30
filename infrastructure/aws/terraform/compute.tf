@@ -2,6 +2,15 @@ data "aws_ssm_parameter" "amazon_linux_2023_ami" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
+resource "aws_eip" "staging_host" {
+  domain   = "vpc"
+  instance = aws_instance.staging_host.id
+
+  tags = {
+    Name = "${local.resource_name}-host"
+  }
+}
+
 resource "aws_instance" "staging_host" {
   ami                         = data.aws_ssm_parameter.amazon_linux_2023_ami.value
   instance_type               = var.ec2_instance_type

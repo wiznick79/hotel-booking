@@ -10,11 +10,12 @@ The Terraform configuration currently creates:
 - one public subnet and its route to the internet;
 - one security group that allows HTTP and HTTPS, but intentionally **not SSH**.
 - one Amazon Linux 2023 EC2 host with an encrypted volume and IMDSv2 required;
+- one Elastic IP address for stable staging DNS;
 - one minimal EC2 role that permits AWS Systems Manager Session Manager access.
 
 On its first boot, the host installs Docker, Git, and a checksum-verified Docker Compose plugin, enables the SSM agent, and creates `/opt/hotel-booking`. It deliberately does **not** clone or start the Compose stack: this repository is private, and a GitHub token must never be embedded in EC2 user data or Terraform state. A later CI/CD step will authenticate to AWS with GitHub OpenID Connect and deliver a built application artifact.
 
-The host uses AWS Systems Manager Session Manager for administration instead of exposing port 22. It has a public IP only so it can access package repositories and later receive HTTP/HTTPS traffic through a reverse proxy. Terraform ignores later `user_data` changes for this learning host because cloud-init executes only on its first boot; a production design would use an immutable image or launch-template rollout instead.
+The host uses AWS Systems Manager Session Manager for administration instead of exposing port 22. Its Elastic IP makes the public endpoint stable for DNS, while only HTTP and HTTPS are permitted through the security group. Terraform ignores later `user_data` changes for this learning host because cloud-init executes only on its first boot; a production design would use an immutable image or launch-template rollout instead.
 
 ## Prerequisites
 
