@@ -74,9 +74,34 @@ jobs:
 
           command_id=$(aws ssm send-command --cli-input-json file://ssm-command.json --query 'Command.CommandId' --output text)
 
-          aws ssm wait command-executed \
-            --command-id "$command_id" \
-            --instance-id "$STAGING_HOST"
+          deadline=$((SECONDS + 840))
+
+          while true; do
+            command_status=$(aws ssm get-command-invocation \
+              --command-id "$command_id" \
+              --instance-id "$STAGING_HOST" \
+              --query 'Status' \
+              --output text)
+
+            case "$command_status" in
+              Success)
+                break
+                ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                aws ssm get-command-invocation \
+                  --command-id "$command_id" \
+                  --instance-id "$STAGING_HOST"
+                exit 1
+                ;;
+            esac
+
+            if (( SECONDS >= deadline )); then
+              echo "Timed out waiting for the staging host command: $command_id" >&2
+              exit 1
+            fi
+
+            sleep 5
+          done
 
           aws ssm get-command-invocation \
             --command-id "$command_id" \
