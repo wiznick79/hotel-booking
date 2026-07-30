@@ -66,7 +66,8 @@ jobs:
                   "aws s3 cp s3://" + $bucket + "/releases/" + $sha + ".tar.gz /opt/hotel-booking/releases/" + $sha + ".tar.gz",
                   "rm -rf /opt/hotel-booking/current",
                   "install -d /opt/hotel-booking/current",
-                  "tar -xzf /opt/hotel-booking/releases/" + $sha + ".tar.gz -C /opt/hotel-booking/current"
+                  "tar -xzf /opt/hotel-booking/releases/" + $sha + ".tar.gz -C /opt/hotel-booking/current",
+                  "bash /opt/hotel-booking/current/infrastructure/aws/staging/start-stack.sh"
                 ]
               }
             }' > ssm-command.json
