@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/actuator/health",
+                                "/actuator/prometheus",
                                  "/api/hotels/**",
                                  "/api/rooms/**",
                                  "/api/rate-periods/**",

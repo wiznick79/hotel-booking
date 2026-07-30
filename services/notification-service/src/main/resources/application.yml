@@ -36,10 +36,13 @@ guest-access:
   encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}
 
 management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
 
 logging:
   pattern:
