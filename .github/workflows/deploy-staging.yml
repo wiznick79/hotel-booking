@@ -26,6 +26,8 @@ jobs:
 
       - name: Create deployment artifact
         run: |
+          artifact_path="$RUNNER_TEMP/hotel-booking-${{ github.sha }}.tar.gz"
+
           tar \
             --exclude=.git \
             --exclude=.idea \
@@ -35,13 +37,13 @@ jobs:
             --exclude='*.tfstate*' \
             --create \
             --gzip \
-            --file=hotel-booking-${{ github.sha }}.tar.gz \
+            --file="$artifact_path" \
             .
 
       - name: Upload artifact to private S3 bucket
         run: |
           aws s3 cp \
-            hotel-booking-${{ github.sha }}.tar.gz \
+            "$RUNNER_TEMP/hotel-booking-${{ github.sha }}.tar.gz" \
             s3://${{ vars.AWS_DEPLOYMENT_BUCKET }}/releases/${{ github.sha }}.tar.gz
 
       - name: Request artifact delivery through Systems Manager
