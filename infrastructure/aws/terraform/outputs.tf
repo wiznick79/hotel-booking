@@ -22,3 +22,13 @@ output "staging_host_public_ip" {
   description = "Ephemeral public IP address of the staging host. It will change after stop/start until an Elastic IP is intentionally introduced."
   value       = aws_instance.staging_host.public_ip
 }
+
+output "deployment_artifact_bucket_name" {
+  description = "Private S3 bucket used by GitHub Actions to deliver staging artifacts."
+  value       = aws_s3_bucket.deployment_artifacts.id
+}
+
+output "github_deploy_role_arn" {
+  description = "OIDC role assumed by the repository's main-branch GitHub Actions deployment workflow."
+  value       = aws_iam_role.github_deploy.arn
+}

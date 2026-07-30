@@ -1,0 +1,80 @@
+name: Deploy staging artifact
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deliver artifact to AWS staging host
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          aws-region: eu-west-3
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: hotel-booking-staging-deploy
+
+      - name: Create deployment artifact
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=.idea \
+            --exclude=target \
+            --exclude=data \
+            --exclude=.terraform \
+            --exclude='*.tfstate*' \
+            --create \
+            --gzip \
+            --file=hotel-booking-${{ github.sha }}.tar.gz \
+            .
+
+      - name: Upload artifact to private S3 bucket
+        run: |
+          aws s3 cp \
+            hotel-booking-${{ github.sha }}.tar.gz \
+            s3://${{ vars.AWS_DEPLOYMENT_BUCKET }}/releases/${{ github.sha }}.tar.gz
+
+      - name: Request artifact delivery through Systems Manager
+        env:
+          ARTIFACT_BUCKET: ${{ vars.AWS_DEPLOYMENT_BUCKET }}
+          ARTIFACT_SHA: ${{ github.sha }}
+          STAGING_HOST: ${{ vars.AWS_STAGING_HOST_INSTANCE_ID }}
+        run: |
+          jq -n \
+            --arg instance "$STAGING_HOST" \
+            --arg bucket "$ARTIFACT_BUCKET" \
+            --arg sha "$ARTIFACT_SHA" \
+            '{
+              DocumentName: "AWS-RunShellScript",
+              InstanceIds: [$instance],
+              Parameters: {
+                commands: [
+                  "set -euo pipefail",
+                  "install -d /opt/hotel-booking/releases",
+                  "aws s3 cp s3://" + $bucket + "/releases/" + $sha + ".tar.gz /opt/hotel-booking/releases/" + $sha + ".tar.gz",
+                  "rm -rf /opt/hotel-booking/current",
+                  "install -d /opt/hotel-booking/current",
+                  "tar -xzf /opt/hotel-booking/releases/" + $sha + ".tar.gz -C /opt/hotel-booking/current"
+                ]
+              }
+            }' > ssm-command.json
+
+          command_id=$(aws ssm send-command --cli-input-json file://ssm-command.json --query 'Command.CommandId' --output text)
+
+          aws ssm wait command-executed \
+            --command-id "$command_id" \
+            --instance-id "$STAGING_HOST"
+
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "$STAGING_HOST"

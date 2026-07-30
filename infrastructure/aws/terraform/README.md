@@ -70,3 +70,15 @@ If this command is denied, the IAM user needs permission to start an SSM session
 Terraform writes `terraform.tfstate` locally by default. It contains resource identifiers and may contain sensitive values, so it is ignored by Git. Before a shared or long-lived environment, we will migrate the state to an encrypted remote backend.
 
 Do not put passwords, JWT keys, database credentials, or SMTP credentials in Terraform variables or committed files. A later application layer will use AWS Secrets Manager or Parameter Store, with the real secret values supplied outside Git.
+
+## GitHub Actions delivery
+
+Terraform also defines a private S3 artifact bucket and a GitHub OpenID Connect deployment role. The role is restricted to this repository's immutable GitHub identity and the `main` branch. The manual `Deploy staging artifact` workflow packages the tested repository, uploads it to the private bucket, and uses Systems Manager to extract it on the EC2 host.
+
+Before triggering the workflow, configure these GitHub repository variables from Terraform outputs:
+
+- `AWS_DEPLOYMENT_BUCKET`;
+- `AWS_DEPLOY_ROLE_ARN`;
+- `AWS_STAGING_HOST_INSTANCE_ID`.
+
+The workflow delivers source only. It deliberately does not start Docker Compose until staging secrets and reverse-proxy configuration are added.
