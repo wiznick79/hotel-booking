@@ -54,7 +54,8 @@ class PostgreSqlFlywayIntegrationTests {
 
     @Test
     void shouldApplyBookingSchemaToPostgreSql() {
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().current()).isNotNull();
+        assertThat(flyway.info().pending()).isEmpty();
         assertThat(tableExists("reservations")).isTrue();
         assertThat(tableExists("reservation_items")).isTrue();
         assertThat(tableExists("booking_policies")).isTrue();

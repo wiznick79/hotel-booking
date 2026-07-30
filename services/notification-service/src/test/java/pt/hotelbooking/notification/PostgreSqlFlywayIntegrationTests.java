@@ -44,7 +44,8 @@ class PostgreSqlFlywayIntegrationTests {
 
     @Test
     void shouldApplyNotificationSchemaToPostgreSql() {
-        assertThat(flyway.info().applied()).hasSize(2);
+        assertThat(flyway.info().current()).isNotNull();
+        assertThat(flyway.info().pending()).isEmpty();
         assertThat(tableExists("notifications")).isTrue();
         assertThat(columnExists("notifications", "hotel_id")).isTrue();
     }
