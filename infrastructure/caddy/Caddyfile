@@ -10,11 +10,21 @@ hotel.wiznick.net {
 	}
 
 	@management path /actuator/*
-	respond @management 404
+	handle @management {
+		respond 404
+	}
 
-	reverse_proxy api-gateway:8080 {
-		health_uri /actuator/health
-		health_interval 10s
-		health_timeout 3s
+	@api path /api/*
+	handle @api {
+		reverse_proxy api-gateway:8080 {
+			health_uri /actuator/health
+			health_interval 10s
+			health_timeout 3s
+		}
+	}
+
+	handle {
+		root * /usr/share/caddy
+		file_server
 	}
 }
