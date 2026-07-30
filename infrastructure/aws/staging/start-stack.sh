@@ -49,3 +49,9 @@ docker compose \
   -f "$application_directory/docker-compose.yml" \
   -f "$application_directory/docker-compose.staging.yml" \
   up --build --detach --remove-orphans
+
+docker compose \
+  --env-file "$runtime_directory/.env" \
+  -f "$application_directory/docker-compose.yml" \
+  -f "$application_directory/docker-compose.staging.yml" \
+  up --detach --force-recreate caddy
