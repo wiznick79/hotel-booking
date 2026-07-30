@@ -21,8 +21,13 @@ public class NotificationProcessor {
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
 
+    private final EmailSender emailSender;
+
     @Value("${public-frontend.base-url:http://localhost:3000}")
     private String publicFrontendBaseUrl;
+
+    @Value("${notification.maximum-attempts:3}")
+    private int maximumAttempts;
 
     @Transactional
     public void processReservationCreated(ReservationCreatedEvent event) {
@@ -84,9 +89,10 @@ public class NotificationProcessor {
     private void deliver(Notification notification) {
         try {
             log.info("Delivering notification {} with subject {}", notification.getId(), notification.getSubject());
+            emailSender.send(notification);
             notification.markSent();
         } catch (RuntimeException exception) {
-            notification.markFailed(exception.getMessage());
+            notification.markFailed(exception.getMessage(), maximumAttempts);
         }
     }
 }

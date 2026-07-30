@@ -58,10 +58,10 @@ public class Notification {
         lastError = null;
     }
 
-    public void markFailed(String error) {
-        status = NotificationStatus.FAILED;
+    public void markFailed(String error, int maximumAttempts) {
         attempts++;
         lastAttemptAt = Instant.now();
         lastError = error;
+        status = attempts >= maximumAttempts ? NotificationStatus.FAILED : NotificationStatus.PENDING;
     }
 }

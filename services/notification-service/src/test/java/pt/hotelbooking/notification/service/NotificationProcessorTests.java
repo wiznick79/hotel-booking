@@ -7,11 +7,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
 import pt.hotelbooking.notification.model.Notification;
+import pt.hotelbooking.notification.model.NotificationStatus;
 import pt.hotelbooking.notification.repository.NotificationRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -23,6 +25,9 @@ class NotificationProcessorTests {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private EmailSender emailSender;
 
     @InjectMocks
     private NotificationProcessor notificationProcessor;
@@ -56,6 +61,19 @@ class NotificationProcessorTests {
         notificationProcessor.processReservationCreated(event);
 
         verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void shouldSendPendingNotificationThroughEmailSender() {
+        Notification notification = new Notification(
+                UUID.randomUUID(), "guest@example.com", "Subject", "Message");
+        when(notificationRepository.findByStatusAndAttemptsLessThan(NotificationStatus.PENDING, 3))
+                .thenReturn(List.of(notification));
+
+        notificationProcessor.deliverPendingNotifications();
+
+        verify(emailSender).send(notification);
+        org.assertj.core.api.Assertions.assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
     }
 
     private ReservationCreatedEvent event(String email) {

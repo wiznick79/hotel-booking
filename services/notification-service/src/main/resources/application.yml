@@ -19,6 +19,9 @@ spring:
     consumer:
       group-id: notification-service
       auto-offset-reset: earliest
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
 
 booking-events:
   topic: reservation-events
@@ -28,6 +31,9 @@ notification:
   kafka:
     retry-delay-ms: 1000
     max-retries: 3
+  maximum-attempts: 3
+  email:
+    from: ${NOTIFICATION_EMAIL_FROM:no-reply@hotelbooking.local}
 
 public-frontend:
   base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3000}

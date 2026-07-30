@@ -57,6 +57,13 @@ services:
     depends_on:
       - prometheus
 
+  mailpit:
+    image: axllent/mailpit:v1.27.7
+    container_name: hotel-booking-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   api-gateway:
     build:
       context: .
@@ -168,6 +175,9 @@ services:
       NOTIFICATION_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
       GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL_FROM:-no-reply@hotelbooking.local}
     ports:
       - "8084:8084"
     depends_on:
@@ -175,6 +185,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
 volumes:
   hotel-booking-postgres-data:
