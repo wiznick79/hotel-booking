@@ -43,7 +43,8 @@ class PostgreSqlFlywayIntegrationTests {
 
     @Test
     void shouldApplyHotelSchemaToPostgreSql() {
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().current()).isNotNull();
+        assertThat(flyway.info().pending()).isEmpty();
         assertThat(tableExists("hotels")).isTrue();
         assertThat(tableExists("room_types")).isTrue();
         assertThat(tableExists("rooms")).isTrue();

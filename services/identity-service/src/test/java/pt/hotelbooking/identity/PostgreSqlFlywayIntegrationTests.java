@@ -43,7 +43,8 @@ class PostgreSqlFlywayIntegrationTests {
 
     @Test
     void shouldApplyIdentitySchemaToPostgreSql() {
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().current()).isNotNull();
+        assertThat(flyway.info().pending()).isEmpty();
         assertThat(tableExists("identity_users")).isTrue();
         assertThat(tableExists("identity_roles")).isTrue();
         assertThat(tableExists("identity_user_roles")).isTrue();
