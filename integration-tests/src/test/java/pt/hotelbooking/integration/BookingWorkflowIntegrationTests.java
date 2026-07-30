@@ -1,12 +1,18 @@
 package pt.hotelbooking.integration;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -34,6 +40,7 @@ import pt.hotelbooking.notification.NotificationServiceApplication;
 import pt.hotelbooking.notification.repository.NotificationRepository;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -46,9 +53,27 @@ class BookingWorkflowIntegrationTests {
 
     private static final String RESERVATION_EVENTS_TOPIC = "reservation-events";
 
+    private static final String RESERVATION_EVENTS_DLT = RESERVATION_EVENTS_TOPIC + ".DLT";
+
     @Container
     private static final KafkaContainer KAFKA = new KafkaContainer(
             DockerImageName.parse("apache/kafka:4.1.2"));
+
+    @BeforeAll
+    static void createKafkaTopics() {
+        Map<String, Object> properties = Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+
+        try (AdminClient adminClient = AdminClient.create(properties)) {
+            adminClient.createTopics(List.of(
+                            new NewTopic(RESERVATION_EVENTS_TOPIC, 3, (short) 1),
+                            new NewTopic(RESERVATION_EVENTS_DLT, 3, (short) 1)))
+                    .all()
+                    .get();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not create the Kafka topics for the integration test.", exception);
+        }
+    }
 
     @Test
     void shouldCreateBookingUsingHotelServiceAndDeliverNotificationThroughOutbox() {
@@ -57,7 +82,6 @@ class BookingWorkflowIntegrationTests {
         ConfigurableApplicationContext bookingContext = null;
 
         try {
-            createReservationEventsTopic();
             hotelContext = startHotelService();
             notificationContext = startNotificationService();
             bookingContext = startBookingService(portOf(hotelContext));
@@ -92,6 +116,27 @@ class BookingWorkflowIntegrationTests {
             close(bookingContext);
             close(notificationContext);
             close(hotelContext);
+        }
+    }
+
+    @Test
+    void shouldSendUnprocessableKafkaEventToDeadLetterTopic() throws Exception {
+        ConfigurableApplicationContext notificationContext = null;
+
+        try {
+            notificationContext = startNotificationService();
+            KafkaTemplate<String, String> kafkaTemplate = notificationContext.getBean(KafkaTemplate.class);
+
+            kafkaTemplate.send(MessageBuilder.withPayload("not-valid-json")
+                    .setHeader(KafkaHeaders.TOPIC, RESERVATION_EVENTS_TOPIC)
+                    .setHeader(KafkaHeaders.KEY, "invalid-event")
+                    .setHeader("eventType", "ReservationCreated")
+                    .build()).get();
+
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                    assertThat(totalRecordsInTopic(RESERVATION_EVENTS_DLT)).isEqualTo(1));
+        } finally {
+            close(notificationContext);
         }
     }
 
@@ -139,16 +184,24 @@ class BookingWorkflowIntegrationTests {
                 Map.entry("JWT_SECRET", "integration-secret-that-is-long-enough-for-hmac-sha256")));
     }
 
-    private void createReservationEventsTopic() {
+    private long totalRecordsInTopic(String topic) {
         Map<String, Object> properties = Map.of(
                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        Map<TopicPartition, OffsetSpec> offsets = Map.of(
+                new TopicPartition(topic, 0), OffsetSpec.latest(),
+                new TopicPartition(topic, 1), OffsetSpec.latest(),
+                new TopicPartition(topic, 2), OffsetSpec.latest());
 
         try (AdminClient adminClient = AdminClient.create(properties)) {
-            adminClient.createTopics(List.of(new NewTopic(RESERVATION_EVENTS_TOPIC, 3, (short) 1)))
+            return adminClient.listOffsets(offsets)
                     .all()
-                    .get();
+                    .get()
+                    .values()
+                    .stream()
+                    .mapToLong(result -> result.offset())
+                    .sum();
         } catch (Exception exception) {
-            throw new IllegalStateException("Could not create the Kafka topic for the integration test.", exception);
+            throw new IllegalStateException("Could not read the Kafka topic offset for the integration test.", exception);
         }
     }
 
