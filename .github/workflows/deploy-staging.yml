@@ -11,7 +11,7 @@ jobs:
   deploy:
     name: Deliver artifact to AWS staging host
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository

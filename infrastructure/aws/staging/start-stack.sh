@@ -44,14 +44,20 @@ EOF
 
 mv "$temporary_environment_file" "$runtime_directory/.env"
 
-docker compose \
-  --env-file "$runtime_directory/.env" \
-  -f "$application_directory/docker-compose.yml" \
-  -f "$application_directory/docker-compose.staging.yml" \
-  up --build --detach --remove-orphans
+compose() {
+  docker compose \
+    --env-file "$runtime_directory/.env" \
+    -f "$application_directory/docker-compose.yml" \
+    -f "$application_directory/docker-compose.staging.yml" \
+    "$@"
+}
 
-docker compose \
-  --env-file "$runtime_directory/.env" \
-  -f "$application_directory/docker-compose.yml" \
-  -f "$application_directory/docker-compose.staging.yml" \
-  up --detach --force-recreate caddy
+compose build hotel-service
+compose build booking-service
+compose build identity-service
+compose build notification-service
+compose build api-gateway
+
+compose up --detach --remove-orphans
+
+compose up --detach --force-recreate caddy

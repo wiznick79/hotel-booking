@@ -105,4 +105,4 @@ The staging Compose override runs Caddy as the only public entry point. Caddy ob
 
 The gateway trusts `X-Forwarded-For` only in the staging override, where Caddy is the public entry point. Caddy discards client-supplied forwarding headers before passing the real client address upstream, allowing public rate limits to operate per client rather than treating every request as Caddy.
 
-The current learning host builds source on the EC2 instance. Its bootstrap script installs checksum-verified Docker Compose and Docker Buildx plugins, which Compose uses for service builds. A later improvement will build immutable images in CI and pull them from a registry instead.
+The current learning host builds source on the EC2 instance. Its bootstrap script installs checksum-verified Docker Compose and Docker Buildx plugins, which Compose uses for service builds. To stay within the host's memory budget, the five Java images build sequentially. A later improvement will build immutable images in CI and pull them from a registry instead.
