@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +65,11 @@ public class DiscountCodeService {
         return discountCodeRepository.findById(id)
                 .map(DiscountCode::getHotelId)
                 .orElseThrow(() -> new IllegalArgumentException("Discount code not found."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DiscountCode> findByHotel(String hotelId) {
+        return discountCodeRepository.findByHotelIdOrderByCodeAsc(hotelId);
     }
 
     private void validateRequest(DiscountCodeRequest request) {

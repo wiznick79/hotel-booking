@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,6 +23,14 @@ import pt.hotelbooking.booking.config.HotelScopeAuthorization;
 public class BookingPolicyController {
 
     private final BookingPolicyService policyService;
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('BOOKING_POLICY_MANAGE')")
+    public BookingPolicy findByHotel(@RequestParam String hotelId, Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, hotelId);
+        return policyService.findByHotel(hotelId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking policy not configured."));
+    }
 
     @PostMapping
     @PreAuthorize("hasAuthority('BOOKING_POLICY_MANAGE')")

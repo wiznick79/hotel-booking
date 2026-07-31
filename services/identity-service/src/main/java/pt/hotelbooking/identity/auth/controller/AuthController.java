@@ -4,21 +4,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import pt.hotelbooking.identity.auth.service.PermissionService;
 import pt.hotelbooking.identity.auth.repository.IdentityUserRepository;
+import pt.hotelbooking.identity.auth.service.AuthenticationTokenService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
-import java.time.Instant;
-import java.util.List;
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -27,35 +27,72 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
 
-    private final JwtEncoder jwtEncoder;
-
-    private final PermissionService permissionService;
-
     private final IdentityUserRepository userRepository;
 
+    private final AuthenticationTokenService authenticationTokenService;
+
+    @Value("${auth.refresh-cookie.secure:false}")
+    private boolean refreshCookieSecure;
+
+    @Value("${auth.refresh-token.expires-in-days:14}")
+    private long refreshTokenExpiresInDays;
+
     @PostMapping("/login")
-    public TokenResponse login(@RequestBody LoginRequest request) {
+    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
         var user = userRepository.findByUsername(authentication.getName()).orElseThrow();
 
-        Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .subject(authentication.getName())
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(900))
-                .claim("roles", authentication.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList())
-                .claim("permissions", permissionService.permissionsFor(
-                        authentication.getAuthorities()))
-                .claim("hotelIds", user.getHotelIds().stream().map(Object::toString).toList())
+        return responseWithRefreshCookie(authenticationTokenService.issueTokens(user));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refresh(
+            @CookieValue(name = "hotel_booking_refresh", required = false) String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token is required.");
+        }
+
+        return responseWithRefreshCookie(authenticationTokenService.refresh(refreshToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "hotel_booking_refresh", required = false) String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            authenticationTokenService.revoke(refreshToken);
+        }
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie().toString())
                 .build();
+    }
 
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(
-                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+    private ResponseEntity<TokenResponse> responseWithRefreshCookie(
+            AuthenticationTokenService.IssuedTokens issuedTokens) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie(issuedTokens.refreshToken()).toString())
+                .body(issuedTokens.response());
+    }
 
-        return new TokenResponse(token, "Bearer", 900);
+    private ResponseCookie refreshCookie(String refreshToken) {
+        return ResponseCookie.from("hotel_booking_refresh", refreshToken)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ofDays(refreshTokenExpiresInDays))
+                .build();
+    }
+
+    private ResponseCookie expiredRefreshCookie() {
+        return ResponseCookie.from("hotel_booking_refresh", "")
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Strict")
+                .path("/api/auth")
+                .maxAge(Duration.ZERO)
+                .build();
     }
 
     public record LoginRequest(String username, String password) {

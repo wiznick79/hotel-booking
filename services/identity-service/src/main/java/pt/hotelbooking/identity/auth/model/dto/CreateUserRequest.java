@@ -12,7 +12,7 @@ public record CreateUserRequest(
         String username,
 
         @NotBlank
-        @Size(min = 12)
+        @Size(min = 10)
         String password,
 
         Set<String> roles,

@@ -28,6 +28,9 @@ public class ProductionIdentityBootstrap {
             PasswordEncoder passwordEncoder,
             IdentityBootstrapProperties properties) {
         return arguments -> {
+            ensureRole(roleRepository, "STAFF");
+            ensureRole(roleRepository, "MANAGER");
+            ensureRole(roleRepository, "CUSTOMER");
             IdentityRole adminRole = roleRepository.findByName("ADMIN")
                     .orElseGet(() -> roleRepository.save(createAdminRole()));
 
@@ -40,6 +43,14 @@ public class ProductionIdentityBootstrap {
                 userRepository.save(administrator);
             }
         };
+    }
+
+    private void ensureRole(IdentityRoleRepository roleRepository, String name) {
+        roleRepository.findByName(name).orElseGet(() -> {
+            IdentityRole role = new IdentityRole();
+            role.setName(name);
+            return roleRepository.save(role);
+        });
     }
 
     private IdentityRole createAdminRole() {

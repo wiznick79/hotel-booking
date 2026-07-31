@@ -43,4 +43,11 @@ public class Room extends BaseEntity {
     public void changeStatus(RoomStatus status) {
         this.status = status;
     }
+
+    public void update(RoomType roomType, String roomNumber, Integer floor, RoomStatus status) {
+        this.roomType = roomType;
+        this.roomNumber = roomNumber;
+        this.floor = floor;
+        this.status = status;
+    }
 }

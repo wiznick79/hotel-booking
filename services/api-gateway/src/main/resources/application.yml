@@ -63,7 +63,7 @@ spring:
             - id: hotel-service
               uri: ${HOTEL_SERVICE_URL:http://localhost:8081}
               predicates:
-                - Path=/api/hotels/**,/api/rooms/**,/api/room-types/**,/api/rate-periods/**,/api/room-unavailabilities/**
+                - Path=/api/hotels/**,/api/rooms/**,/api/room-types/**,/api/pricing-rules/**,/api/room-unavailabilities/**
             - id: booking-service
               uri: ${BOOKING_SERVICE_URL:http://localhost:8082}
               predicates:

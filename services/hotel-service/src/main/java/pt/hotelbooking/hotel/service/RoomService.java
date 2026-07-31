@@ -7,6 +7,7 @@ import pt.hotelbooking.hotel.exception.HotelNotFoundException;
 import pt.hotelbooking.hotel.exception.RoomTypeNotFoundException;
 import pt.hotelbooking.hotel.model.dto.RoomRequest;
 import pt.hotelbooking.hotel.model.dto.RoomResponse;
+import pt.hotelbooking.hotel.model.dto.RoomUpdateRequest;
 import pt.hotelbooking.hotel.model.entity.Hotel;
 import pt.hotelbooking.hotel.model.entity.Room;
 import pt.hotelbooking.hotel.model.entity.RoomType;
@@ -45,5 +46,17 @@ public class RoomService {
     @Transactional(readOnly = true)
     public List<RoomResponse> findAll() {
         return roomRepo.findAll().stream().map(RoomResponse::from).toList();
+    }
+
+    @Transactional
+    public RoomResponse update(UUID id, RoomUpdateRequest request) {
+        Room room = roomRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Room not found: " + id));
+        RoomType roomType = roomTypeRepo.findById(request.roomTypeId())
+                .orElseThrow(() -> new RoomTypeNotFoundException(request.roomTypeId()));
+        if (!roomType.getHotel().getId().equals(room.getHotel().getId())) {
+            throw new IllegalArgumentException("Room type must belong to the room's hotel.");
+        }
+        room.update(roomType, request.roomNumber(), request.floor(), request.status());
+        return RoomResponse.from(room);
     }
 }

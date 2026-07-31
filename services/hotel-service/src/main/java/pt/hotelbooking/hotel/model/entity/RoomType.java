@@ -42,4 +42,16 @@ public class RoomType extends BaseEntity {
         translations.add(translation);
         translation.assignRoomType(this);
     }
+
+    public void update(int maximumOccupancy, BigDecimal basePrice) {
+        this.maximumOccupancy = maximumOccupancy;
+        this.basePrice = basePrice;
+    }
+
+    public void replaceTranslations(List<RoomTypeTranslation> translations) {
+        this.translations.removeIf(existing -> translations.stream()
+                .anyMatch(replacement -> replacement.getLanguageCode()
+                        .equalsIgnoreCase(existing.getLanguageCode())));
+        translations.forEach(this::addTranslation);
+    }
 }

@@ -17,6 +17,7 @@ import pt.hotelbooking.identity.auth.repository.IdentityUserRepository;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class IdentityUserService {
     private final IdentityUserRepository userRepository;
     private final IdentityRoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationTokenService authenticationTokenService;
 
     @Transactional
     public IdentityUser create(CreateUserRequest request) {
@@ -56,6 +58,7 @@ public class IdentityUserService {
     public void updatePassword(Long userId, UpdatePasswordRequest request) {
         IdentityUser user = findUser(userId);
         user.setPassword(passwordEncoder.encode(request.password()));
+        authenticationTokenService.revokeAllForUser(userId);
     }
 
     @Transactional
@@ -70,12 +73,32 @@ public class IdentityUserService {
         }
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
+        authenticationTokenService.revokeAllForUser(user.getId());
     }
 
     @Transactional
     public void updateEnabled(Long userId, boolean enabled) {
         IdentityUser user = findUser(userId);
         user.setEnabled(enabled);
+    }
+
+    @Transactional(readOnly = true)
+    public IdentityUser findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+    }
+
+    @Transactional(readOnly = true)
+    public List<IdentityUser> findAll() {
+        return userRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<IdentityUser> findStaffAssignedTo(Set<java.util.UUID> hotelIds) {
+        return userRepository.findAll().stream()
+                .filter(user -> user.getRoles().stream().anyMatch(role -> role.getName().equals("STAFF")))
+                .filter(user -> user.getHotelIds().stream().anyMatch(hotelIds::contains))
+                .toList();
     }
 
     private IdentityUser findUser(Long userId) {

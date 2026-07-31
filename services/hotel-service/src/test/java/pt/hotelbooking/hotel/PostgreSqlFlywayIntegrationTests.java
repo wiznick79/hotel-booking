@@ -48,7 +48,8 @@ class PostgreSqlFlywayIntegrationTests {
         assertThat(tableExists("hotels")).isTrue();
         assertThat(tableExists("room_types")).isTrue();
         assertThat(tableExists("rooms")).isTrue();
-        assertThat(tableExists("rate_periods")).isTrue();
+        assertThat(tableExists("pricing_rules")).isTrue();
+        assertThat(tableExists("pricing_rule_room_type_prices")).isTrue();
         assertThat(tableExists("room_unavailabilities")).isTrue();
     }
 

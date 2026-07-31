@@ -55,12 +55,12 @@ This avoids making every unpaid reservation permanently confirmed while keeping 
 
 Pricing is calculated during booking and stored as a snapshot on the reservation. Future changes to rates must not change existing reservations.
 
-The pricing model must eventually support room-type prices by:
+The pricing model supports hotel-level rules with room-type-specific prices. A rule can be either:
 
-- Date period
-- Weekday/weekend rules
-- High season
-- Holiday periods
+- A recurring season expressed as month/day boundaries, including periods that cross New Year (for example 20 December to 5 January).
+- A one-off date override for a specific date range, including moving holidays such as Easter.
+
+When rules overlap, the highest priority wins. At the same priority, a one-off date override wins over a recurring season. A rule applies only to the room types for which it has a price; all other room types fall back to their base price.
 
 The initial weekend convention is Friday and Saturday nights. Sunday uses the normal nightly price. A missing weekend price also uses the normal nightly price.
 
