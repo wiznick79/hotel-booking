@@ -32,7 +32,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                  "/api/hotels/**",
                                  "/api/rooms/**",
-                                 "/api/rate-periods/**",
+                                 "/api/pricing-rules/**",
                                  "/api/room-unavailabilities/**")
                         .permitAll()
                         .anyRequest()

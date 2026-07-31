@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import pt.hotelbooking.hotel.model.dto.RoomRequest;
 import pt.hotelbooking.hotel.model.dto.RoomResponse;
+import pt.hotelbooking.hotel.model.dto.RoomUpdateRequest;
 import pt.hotelbooking.hotel.service.RoomService;
 import pt.hotelbooking.hotel.config.HotelScopeAuthorization;
 
@@ -37,5 +38,13 @@ public class RoomController {
     @GetMapping
     public List<RoomResponse> findAll() {
         return roomService.findAll();
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROOM_MANAGE')")
+    public RoomResponse update(@PathVariable UUID id, @Valid @RequestBody RoomUpdateRequest request,
+                               Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, roomService.findById(id).hotelId());
+        return roomService.update(id, request);
     }
 }

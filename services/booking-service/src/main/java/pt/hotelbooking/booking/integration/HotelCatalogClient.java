@@ -86,7 +86,7 @@ public class HotelCatalogClient {
         try {
             response = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/api/rate-periods/quote")
+                            .path("/api/pricing-rules/quote")
                             .queryParam("roomTypeId", roomTypeId)
                             .queryParam("checkInDate", checkInDate)
                             .queryParam("checkOutDate", checkOutDate)

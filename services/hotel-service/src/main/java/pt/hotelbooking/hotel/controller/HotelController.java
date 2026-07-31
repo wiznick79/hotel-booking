@@ -35,6 +35,12 @@ public class HotelController {
         return hotelService.create(request);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('HOTEL_MANAGE')")
+    public HotelResponse update(@PathVariable UUID id, @Valid @RequestBody HotelRequest request) {
+        return hotelService.update(id, request);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('HOTEL_MANAGE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -28,6 +28,9 @@ public class IdentityDataInitializer {
     @Bean
     CommandLineRunner seedIdentityData() {
         return arguments -> {
+            ensureRole("STAFF");
+            ensureRole("MANAGER");
+            ensureRole("CUSTOMER");
             IdentityRole adminRole = roleRepository.findByName("ADMIN")
                     .orElseGet(this::createAdminRole);
 
@@ -39,6 +42,14 @@ public class IdentityDataInitializer {
                 userRepository.save(admin);
             }
         };
+    }
+
+    private void ensureRole(String name) {
+        roleRepository.findByName(name).orElseGet(() -> {
+            IdentityRole role = new IdentityRole();
+            role.setName(name);
+            return roleRepository.save(role);
+        });
     }
 
     private IdentityRole createAdminRole() {

@@ -8,6 +8,7 @@ import pt.hotelbooking.booking.model.entity.BookingPolicy;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
 
 import java.time.Duration;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,5 +24,10 @@ public class BookingPolicyService {
         policy.update(request.payLaterAllowed(), request.maxUnconfirmedBookings(),
                 Duration.ofMinutes(request.holdDurationMinutes()), request.cancellationDeadlineDays());
         return policyRepo.save(policy);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<BookingPolicy> findByHotel(String hotelId) {
+        return policyRepo.findByHotelId(hotelId);
     }
 }

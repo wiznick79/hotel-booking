@@ -26,6 +26,9 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Users must not be required to create an account to make a booking.
 - Registered customers must be able to authenticate securely.
 - Staff users must have role-based permissions.
+- Administrators have full system access and are the only users allowed to create or promote Managers.
+- Managers can manage their assigned hotels and create Staff accounts, but cannot create or promote Administrators or Managers.
+- Staff members are assigned to at least one hotel and have operational access only to their assigned hotels.
 - A guest must be able to access a booking through a secure, expiring email link.
 - Guest access must be limited to the specific booking represented by the link.
 - Guest access links must remain valid for early bookings until the checkout date, followed by a configurable post-checkout grace period.
@@ -165,6 +168,6 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - The system should support hotel-configured limits or confirmation deadlines for unpaid bookings rather than treating every unpaid booking as permanently confirmed.
 - Overlapping bookings for the same physical room are forbidden.
 - Overlapping bookings associated with the same guest should normally produce a warning rather than an absolute rejection, because groups may legitimately have multiple rooms or reservations. Exact duplicate/abusive patterns can be restricted later.
-- Seasonal, weekend, and holiday pricing periods are configurable per hotel and room type.
+- Seasonal, weekend, and holiday pricing rules are configurable per hotel. A rule can set prices for one or more room types, while any omitted room type keeps its base price.
 - Weekend pricing applies to Friday and Saturday nights by default; Sunday is treated as a normal night.
 - Weekend pricing is optional; when absent, the normal nightly price applies.

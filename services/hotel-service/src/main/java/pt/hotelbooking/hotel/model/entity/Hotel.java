@@ -29,4 +29,14 @@ public class Hotel extends BaseEntity {
         this.country = country;
         this.defaultLanguage = defaultLanguage;
     }
+
+    public void update(String name, String description, String address, String city, String country,
+                       String defaultLanguage) {
+        this.name = name;
+        this.description = description;
+        this.address = address;
+        this.city = city;
+        this.country = country;
+        this.defaultLanguage = defaultLanguage;
+    }
 }

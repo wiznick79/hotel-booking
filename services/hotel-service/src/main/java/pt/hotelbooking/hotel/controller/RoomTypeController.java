@@ -13,6 +13,7 @@ import pt.hotelbooking.core.i18n.LanguageResolver;
 import pt.hotelbooking.hotel.config.HotelScopeAuthorization;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/room-types")
@@ -36,5 +37,22 @@ public class RoomTypeController {
     public List<RoomTypeResponse> findAll(
             @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
         return roomTypeService.findAll(languageResolver.resolve(null, acceptLanguage));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
+    public RoomTypeResponse update(@PathVariable UUID id, @Valid @RequestBody RoomTypeRequest request,
+                                   @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage,
+                                   Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, request.hotelId());
+        return roomTypeService.update(id, request, languageResolver.resolve(null, acceptLanguage));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivate(@PathVariable UUID id, Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, roomTypeService.findHotelId(id));
+        roomTypeService.deactivate(id);
     }
 }

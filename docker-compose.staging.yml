@@ -49,6 +49,8 @@ services:
 
   identity-service:
     ports: !reset []
+    environment:
+      AUTH_REFRESH_COOKIE_SECURE: "true"
 
   notification-service:
     ports: !reset []

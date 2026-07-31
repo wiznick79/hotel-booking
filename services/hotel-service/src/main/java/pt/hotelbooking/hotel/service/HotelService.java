@@ -42,6 +42,15 @@ public class HotelService {
 
     @Transactional
     @CacheEvict(cacheNames = {"hotel-list", "hotels"}, key = "#id")
+    public HotelResponse update(UUID id, HotelRequest request) {
+        Hotel hotel = findEntity(id);
+        hotel.update(request.name(), request.description(), request.address(), request.city(), request.country(),
+                request.defaultLanguage() == null ? "en" : request.defaultLanguage());
+        return HotelResponse.from(hotel);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = {"hotel-list", "hotels"}, key = "#id")
     public void deactivate(UUID id) {
         Hotel hotel = findEntity(id);
 

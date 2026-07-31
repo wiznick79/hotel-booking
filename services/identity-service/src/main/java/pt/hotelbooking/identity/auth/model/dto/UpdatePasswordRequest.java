@@ -6,6 +6,6 @@ import jakarta.validation.constraints.Size;
 public record UpdatePasswordRequest(
 
         @NotBlank
-        @Size(min = 12)
+        @Size(min = 10)
         String password) {
 }

@@ -26,14 +26,12 @@ import pt.hotelbooking.booking.model.entity.PaymentMode;
 import pt.hotelbooking.booking.repository.OutboxEventRepository;
 import pt.hotelbooking.booking.service.ReservationService;
 import pt.hotelbooking.hotel.model.dto.HotelRequest;
-import pt.hotelbooking.hotel.model.dto.RatePeriodRequest;
 import pt.hotelbooking.hotel.model.dto.RoomRequest;
 import pt.hotelbooking.hotel.model.dto.RoomTypeRequest;
 import pt.hotelbooking.hotel.model.dto.HotelResponse;
 import pt.hotelbooking.hotel.model.dto.RoomResponse;
 import pt.hotelbooking.hotel.model.dto.RoomTypeResponse;
 import pt.hotelbooking.hotel.service.HotelService;
-import pt.hotelbooking.hotel.service.RatePeriodService;
 import pt.hotelbooking.hotel.service.RoomService;
 import pt.hotelbooking.hotel.service.RoomTypeService;
 import pt.hotelbooking.notification.NotificationServiceApplication;
@@ -212,7 +210,6 @@ class BookingWorkflowIntegrationTests {
         HotelService hotelService = hotelContext.getBean(HotelService.class);
         RoomTypeService roomTypeService = hotelContext.getBean(RoomTypeService.class);
         RoomService roomService = hotelContext.getBean(RoomService.class);
-        RatePeriodService ratePeriodService = hotelContext.getBean(RatePeriodService.class);
 
         HotelResponse hotel = hotelService.create(new HotelRequest(
                 "Integration Hotel", null, "Main Street", "Lisbon", "Portugal", "en"));
@@ -222,15 +219,6 @@ class BookingWorkflowIntegrationTests {
                 BigDecimal.valueOf(100),
                 Map.of("en", new RoomTypeRequest.TranslationRequest("Double Room", null))), "en");
         RoomResponse room = roomService.create(new RoomRequest(hotel.id(), roomType.id(), "101", 1));
-        LocalDate startDate = LocalDate.now().plusDays(1);
-        ratePeriodService.create(new RatePeriodRequest(
-                roomType.id(),
-                startDate,
-                startDate.plusYears(1),
-                BigDecimal.valueOf(100),
-                null,
-                "Integration rate"));
-
         return room;
     }
 
