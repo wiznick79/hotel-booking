@@ -40,6 +40,8 @@ public class DiscountCode {
 
     private boolean active = true;
 
+    private boolean erased = false;
+
     public DiscountCode(
             String hotelId,
             String code,
@@ -82,6 +84,11 @@ public class DiscountCode {
     }
 
     public void deactivate() {
+        active = false;
+    }
+
+    public void erase() {
+        erased = true;
         active = false;
     }
 }

@@ -82,10 +82,10 @@ public class PricingRuleService {
     }
 
     @Transactional
-    public void deactivate(UUID id) {
+    public void erase(UUID id) {
         pricingRuleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Pricing rule not found: " + id))
-                .deactivate();
+                .erase();
     }
 
     @Transactional(readOnly = true)

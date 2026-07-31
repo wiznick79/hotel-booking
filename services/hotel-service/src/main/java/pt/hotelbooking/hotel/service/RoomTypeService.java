@@ -49,7 +49,7 @@ public class RoomTypeService {
 
     @Transactional(readOnly = true)
     public List<RoomTypeResponse> findAll(String language) {
-        return roomTypeRepo.findAll().stream().map(type -> RoomTypeResponse.from(type, language)).toList();
+        return roomTypeRepo.findByErasedFalse().stream().map(type -> RoomTypeResponse.from(type, language)).toList();
     }
 
     @Transactional
@@ -65,12 +65,12 @@ public class RoomTypeService {
     }
 
     @Transactional
-    public void deactivate(UUID id) {
+    public void erase(UUID id) {
         RoomType roomType = findEntity(id);
         if (roomRepository.existsByRoomTypeIdAndActiveTrueAndErasedFalse(id)) {
-            throw new IllegalStateException("A room type with active rooms cannot be deactivated.");
+            throw new IllegalStateException("A room type with active rooms cannot be deleted.");
         }
-        roomType.deactivate();
+        roomType.erase();
     }
 
     @Transactional(readOnly = true)

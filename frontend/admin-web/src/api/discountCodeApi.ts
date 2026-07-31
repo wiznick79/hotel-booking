@@ -1,4 +1,4 @@
-import { get, patch, patchWithoutBody, post } from './httpClient';
+import { del, get, patch, patchWithoutBody, post } from './httpClient';
 
 export type DiscountCode = {
   id: string;
@@ -25,6 +25,10 @@ export function createDiscountCode(accessToken: string, request: CreateDiscountC
 
 export function deactivateDiscountCode(accessToken: string, id: string) {
   return patchWithoutBody(`/discount-codes/${id}/deactivate`, accessToken);
+}
+
+export function deleteDiscountCode(accessToken: string, id: string) {
+  return del(`/discount-codes/${id}`, accessToken);
 }
 
 export function updateDiscountCode(accessToken: string, id: string, request: CreateDiscountCodeRequest) {

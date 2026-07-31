@@ -1,4 +1,4 @@
-import { get } from './httpClient';
+import { del, get, patch } from './httpClient';
 
 export type Reservation = {
   id: string;
@@ -39,4 +39,12 @@ export function findReservations(
   const parameters = new URLSearchParams({ hotelId, from, to });
 
   return get<Reservation[]>('/reservations', accessToken, parameters);
+}
+
+export function confirmReservation(accessToken: string, id: string) {
+  return patch<Reservation>(`/reservations/${id}/confirm`, {}, accessToken);
+}
+
+export function cancelReservation(accessToken: string, id: string) {
+  return del(`/reservations/${id}`, accessToken);
 }

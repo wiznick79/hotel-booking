@@ -4,6 +4,7 @@ import type { CreateRoomRequest, Room, RoomType } from '../api/roomApi';
 import { createRoom, findRooms, findRoomTypes, updateRoom } from '../api/roomApi';
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
+import { StatusBadge } from '../components/StatusBadge';
 
 export function RoomsPage({ hotelId }: { hotelId: string }) {
   const { session } = useAuth();
@@ -101,7 +102,7 @@ export function RoomsPage({ hotelId }: { hotelId: string }) {
       {hotelId && roomTypes.length > 0 && rooms.length === 0 && !isFormOpen && !error && <div className="empty-state"><h2>No rooms yet</h2><p>Add the physical room numbers for this hotel.</p></div>}
 
       {rooms.length > 0 && (
-        <div className="table-container"><table><thead><tr><th>Room</th><th>Type</th><th>Floor</th><th>Status</th><th /></tr></thead><tbody>{rooms.map((room) => <tr key={room.id}><td><strong>{room.roomNumber}</strong></td><td>{roomTypes.find((roomType) => roomType.id === room.roomTypeId)?.name ?? 'Unknown type'}</td><td>{room.floor}</td><td><span className={`status status-${room.status.toLowerCase()}`}>{formatStatus(room.status)}</span></td><td><button type="button" className="secondary-button" onClick={() => { setEditingRoomId(room.id); setRoomNumber(room.roomNumber); setRoomTypeId(room.roomTypeId); setFloor(String(room.floor)); setStatus(room.status); setIsFormOpen(true); }}>Edit</button></td></tr>)}</tbody></table></div>
+        <div className="table-container"><table><thead><tr><th>Room</th><th>Type</th><th>Floor</th><th>Status</th><th /></tr></thead><tbody>{rooms.map((room) => <tr key={room.id}><td><strong>{room.roomNumber}</strong></td><td>{roomTypes.find((roomType) => roomType.id === room.roomTypeId)?.name ?? 'Unknown type'}</td><td>{room.floor}</td><td><StatusBadge label={formatStatus(room.status)} tone={room.status === 'AVAILABLE' ? 'positive' : room.status === 'MAINTENANCE' ? 'warning' : 'negative'} /></td><td><button type="button" className="secondary-button" onClick={() => { setEditingRoomId(room.id); setRoomNumber(room.roomNumber); setRoomTypeId(room.roomTypeId); setFloor(String(room.floor)); setStatus(room.status); setIsFormOpen(true); }}>Edit</button></td></tr>)}</tbody></table></div>
       )}
 
       {isFormOpen && (

@@ -22,6 +22,8 @@ main:not(.login-page) { margin: 0 auto; max-width: 75rem; padding: 2.5rem 2rem; 
 .page-heading p:not(.eyebrow), .info-card p, .empty-state p, .login-card > p { color: #61707c; line-height: 1.55; }
 .eyebrow { color: #8c7444; font-size: .75rem; font-weight: 750; letter-spacing: .08em; margin: 0 0 .45rem; text-transform: uppercase; }
 .info-card, .empty-state { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; padding: 1.5rem; }
+.dashboard-cards { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-cards h2 { font-size: 2rem; margin: .25rem 0; }
 .setup-card { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; padding: 1.5rem; }
 .setup-card h2 { margin: 0; }
 .setup-card > div > p { color: #61707c; line-height: 1.55; }
@@ -55,9 +57,10 @@ th { color: #61707c; font-size: .75rem; letter-spacing: .05em; text-transform: u
 tbody tr:last-child td { border-bottom: 0; }
 .table-subtext { color: #61707c; display: block; font-size: .85rem; margin-top: .25rem; }
 .status { border-radius: 999px; display: inline-block; font-size: .8rem; font-weight: 700; padding: .3rem .55rem; }
-.status-pending, .status-held { background: #fff3d9; color: #865b00; }
-.status-confirmed, .status-checked_in, .status-checked_out { background: #e4f4eb; color: #216c46; }
-.status-cancelled, .status-no_show { background: #f9e4e3; color: #9b2921; }
+.status-positive { background: #e4f4eb; color: #216c46; }
+.status-warning { background: #fff3d9; color: #865b00; }
+.status-negative { background: #f9e4e3; color: #9b2921; }
+.status-neutral { background: #e8edef; color: #405563; }
 .login-page { align-items: center; background: linear-gradient(135deg, #f5f6f8 0%, #e6ebed 100%); display: flex; justify-content: center; min-height: 100vh; padding: 1.5rem; }
 .login-card { background: #fff; border: 1px solid #e1e5e8; border-radius: .85rem; box-shadow: 0 1rem 3rem rgb(20 37 47 / 10%); max-width: 25rem; padding: 2rem; text-align: center; width: 100%; }
 .login-card .brand-mark { margin-bottom: 1.25rem; }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { createDiscountCode, deactivateDiscountCode, findDiscountCodes, updateDiscountCode } from '../api/discountCodeApi';
+import { createDiscountCode, deleteDiscountCode, findDiscountCodes, updateDiscountCode } from '../api/discountCodeApi';
 import type { CreateDiscountCodeRequest, DiscountCode } from '../api/discountCodeApi';
 import { useAuth } from '../auth/useAuth';
+import { StatusBadge } from '../components/StatusBadge';
 
 export function DiscountCodesPage({ hotelId }: { hotelId: string }) {
   const { session } = useAuth();
@@ -83,16 +84,20 @@ export function DiscountCodesPage({ hotelId }: { hotelId: string }) {
     }
   }
 
-  async function deactivate(id: string) {
+  async function deleteCode(id: string) {
     if (!session) {
       return;
     }
 
+    if (!window.confirm('Delete this discount code? It will be removed from normal management screens.')) {
+      return;
+    }
+
     try {
-      await deactivateDiscountCode(session.accessToken, id);
+      await deleteDiscountCode(session.accessToken, id);
       await loadCodes();
     } catch {
-      setError('The discount code could not be deactivated. Please try again.');
+      setError('The discount code could not be deleted. Please try again.');
     }
   }
 
@@ -101,8 +106,7 @@ export function DiscountCodesPage({ hotelId }: { hotelId: string }) {
     {error && <p className="form-error" role="alert">{error}</p>}
     {!hotelId && <div className="empty-state"><h2>Select a hotel first</h2><p>Discount codes belong to one hotel.</p></div>}
     {hotelId && codes.length === 0 && !error && <div className="empty-state"><h2>No discount codes yet</h2><p>Create one when you want to run a promotion.</p></div>}
-    {codes.some((discountCode) => discountCode.active) && <p className="field-help">Select a code row below to edit it before deactivating it.</p>}
-    {codes.length > 0 && <div className="table-container"><table><thead><tr><th>Code</th><th>Discount</th><th>Validity</th><th>Uses</th><th>Status</th><th /></tr></thead><tbody>{codes.map((discountCode) => <tr key={discountCode.id}><td><strong>{discountCode.code}</strong></td><td>{formatDiscount(discountCode)}</td><td>{discountCode.validFrom} to {discountCode.validUntil}</td><td>{discountCode.usedCount} / {discountCode.maximumUses ?? 'Unlimited'}</td><td><span className={`status ${discountCode.active ? 'status-confirmed' : 'status-cancelled'}`}>{discountCode.active ? 'Active' : 'Inactive'}</span></td><td>{discountCode.active && <><button type="button" className="secondary-button" onClick={() => edit(discountCode)}>Edit</button> <button type="button" className="secondary-button" onClick={() => void deactivate(discountCode.id)}>Deactivate</button></>}</td></tr>)}</tbody></table></div>}
+    {codes.length > 0 && <div className="table-container"><table><thead><tr><th>Code</th><th>Discount</th><th>Validity</th><th>Uses</th><th>Status</th><th /></tr></thead><tbody>{codes.map((discountCode) => <tr key={discountCode.id}><td><strong>{discountCode.code}</strong></td><td>{formatDiscount(discountCode)}</td><td>{discountCode.validFrom} to {discountCode.validUntil}</td><td>{discountCode.usedCount} / {discountCode.maximumUses ?? 'Unlimited'}</td><td><StatusBadge label={discountCode.active ? 'Active' : 'Inactive'} tone={discountCode.active ? 'positive' : 'negative'} /></td><td><button type="button" className="secondary-button" onClick={() => edit(discountCode)}>Edit</button> <button type="button" className="secondary-button" onClick={() => void deleteCode(discountCode.id)}>Delete</button></td></tr>)}</tbody></table></div>}
     {isFormOpen && <section className="setup-card room-type-form-card"><h2>New discount code</h2><form className="hotel-form" onSubmit={handleSubmit}><label>Code<input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="SUMMER10" required /></label><label>Discount type<select value={discountType} onChange={(event) => setDiscountType(event.target.value as 'percentage' | 'fixedAmount')}><option value="percentage">Percentage</option><option value="fixedAmount">Fixed amount (€)</option></select></label><label>{discountType === 'percentage' ? 'Percentage' : 'Amount (€)'}<input type="number" min="0.01" max={discountType === 'percentage' ? '100' : undefined} step="0.01" value={discountValue} onChange={(event) => setDiscountValue(event.target.value)} required /></label><label>Maximum uses <span className="field-help">Leave empty for unlimited use.</span><input type="number" min="1" step="1" value={maximumUses} onChange={(event) => setMaximumUses(event.target.value)} /></label><label>Valid from<input type="date" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} required /></label><label>Valid until<input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} required /></label><div className="form-actions full-width"><button type="button" className="secondary-button" onClick={resetForm}>Cancel</button><button type="submit">Create discount code</button></div></form></section>}
   </section>;
 }

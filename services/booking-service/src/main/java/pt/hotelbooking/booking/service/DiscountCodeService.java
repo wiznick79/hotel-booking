@@ -60,6 +60,13 @@ public class DiscountCodeService {
         discountCode.deactivate();
     }
 
+    @Transactional
+    public void erase(UUID id) {
+        discountCodeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Discount code not found."))
+                .erase();
+    }
+
     @Transactional(readOnly = true)
     public String findHotelId(UUID id) {
         return discountCodeRepository.findById(id)
@@ -69,7 +76,7 @@ public class DiscountCodeService {
 
     @Transactional(readOnly = true)
     public List<DiscountCode> findByHotel(String hotelId) {
-        return discountCodeRepository.findByHotelIdOrderByCodeAsc(hotelId);
+        return discountCodeRepository.findByHotelIdAndErasedFalseOrderByCodeAsc(hotelId);
     }
 
     private void validateRequest(DiscountCodeRequest request) {
@@ -91,7 +98,7 @@ public class DiscountCodeService {
         }
 
         DiscountCode discountCode = discountCodeRepository
-                .findByHotelIdAndCodeIgnoreCase(hotelId, code)
+                .findByHotelIdAndCodeIgnoreCaseAndErasedFalse(hotelId, code)
                 .orElseThrow(() -> new IllegalArgumentException("Discount code is invalid."));
 
         if (!discountCode.isValidOn(date)) {

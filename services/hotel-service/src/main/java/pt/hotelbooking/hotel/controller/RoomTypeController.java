@@ -51,8 +51,8 @@ public class RoomTypeController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable UUID id, Authentication authentication) {
+    public void delete(@PathVariable UUID id, Authentication authentication) {
         HotelScopeAuthorization.requireAccess(authentication, roomTypeService.findHotelId(id));
-        roomTypeService.deactivate(id);
+        roomTypeService.erase(id);
     }
 }

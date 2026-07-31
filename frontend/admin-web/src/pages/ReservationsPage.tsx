@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Reservation } from '../api/reservationApi';
-import { findReservations } from '../api/reservationApi';
+import { cancelReservation, confirmReservation, findReservations } from '../api/reservationApi';
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
+import { StatusBadge } from '../components/StatusBadge';
 
 type ReservationsPageProps = {
   hotelId: string;
@@ -54,6 +55,18 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void loadReservations();
+  }
+
+  async function confirm(id: string) {
+    if (!session) return;
+    try { await confirmReservation(session.accessToken, id); await loadReservations(); }
+    catch { setError('The reservation could not be confirmed.'); }
+  }
+
+  async function cancel(id: string) {
+    if (!session || !window.confirm('Cancel this reservation?')) return;
+    try { await cancelReservation(session.accessToken, id); await loadReservations(); }
+    catch { setError('The reservation could not be cancelled.'); }
   }
 
   return (
@@ -108,7 +121,7 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
                     <th>Rooms</th>
                     <th>Guests</th>
                     <th>Status</th>
-                    <th>Total</th>
+                    <th>Total</th><th />
                   </tr>
                 </thead>
                 <tbody>
@@ -121,8 +134,8 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
                       <td>{reservation.checkInDate} – {reservation.checkOutDate}</td>
                       <td>{reservation.roomIds.length}</td>
                       <td>{reservation.guestCount}</td>
-                      <td><span className={`status status-${reservation.status.toLowerCase()}`}>{formatStatus(reservation.status)}</span></td>
-                      <td>{formatPrice(reservation.totalPrice, reservation.currency)}</td>
+                      <td><StatusBadge label={formatStatus(reservation.status)} tone={reservation.status === 'PENDING' || reservation.status === 'HELD' ? 'warning' : reservation.status === 'CANCELLED' || reservation.status === 'NO_SHOW' ? 'negative' : 'positive'} /></td>
+                      <td>{formatPrice(reservation.totalPrice, reservation.currency)}</td><td>{reservation.status === 'PENDING' && <button type="button" className="secondary-button" onClick={() => void confirm(reservation.id)}>Confirm</button>} {!['CANCELLED', 'CHECKED_OUT'].includes(reservation.status) && <button type="button" className="secondary-button" onClick={() => void cancel(reservation.id)}>Cancel</button>}</td>
                     </tr>
                   ))}
                 </tbody>

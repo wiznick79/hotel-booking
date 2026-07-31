@@ -52,9 +52,9 @@ public class PricingRuleController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('RATE_PERIOD_MANAGE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable UUID id, Authentication authentication) {
+    public void delete(@PathVariable UUID id, Authentication authentication) {
         HotelScopeAuthorization.requireAccess(authentication, pricingRuleService.findHotelId(id));
-        pricingRuleService.deactivate(id);
+        pricingRuleService.erase(id);
     }
 
     @GetMapping

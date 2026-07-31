@@ -1,5 +1,6 @@
 .idea/
 *.iml
+AGENTS.md
 target/
 .env
 .env.*
