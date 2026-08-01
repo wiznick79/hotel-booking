@@ -23,6 +23,7 @@ backup_bucket="$(aws ssm get-parameter \
   --query 'Parameter.Value' \
   --output text)"
 
+BACKUP_TIMESTAMP="$timestamp" \
 BACKUP_DIRECTORY="$temporary_backup_directory" \
   "$application_directory/infrastructure/postgres/backup.sh"
 
