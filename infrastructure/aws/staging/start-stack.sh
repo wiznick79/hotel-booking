@@ -60,6 +60,8 @@ compose build booking-service
 compose build identity-service
 compose build notification-service
 compose build api-gateway
+compose build admin-web
+compose build public-web
 
 compose up --detach --remove-orphans
 
