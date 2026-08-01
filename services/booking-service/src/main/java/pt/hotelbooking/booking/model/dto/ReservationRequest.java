@@ -12,5 +12,5 @@ import pt.hotelbooking.booking.model.entity.PaymentMode;
 public record ReservationRequest(@NotBlank String hotelId, @NotBlank String guestName,
                                   @NotBlank String guestPhone, String guestEmail, @Min(1) int guestCount,
                                   @NotNull @Future LocalDate checkInDate, @NotNull @Future LocalDate checkOutDate,
-                                  String notes, @NotEmpty List<@NotBlank String> roomIds,
+                                  String notes, @NotEmpty List<@NotBlank String> roomTypeIds,
                                   PaymentMode paymentMode, String discountCode) { }

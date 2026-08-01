@@ -52,6 +52,11 @@ public class RoomTypeService {
         return roomTypeRepo.findByErasedFalse().stream().map(type -> RoomTypeResponse.from(type, language)).toList();
     }
 
+    @Transactional(readOnly = true)
+    public RoomTypeResponse findById(UUID id, String language) {
+        return RoomTypeResponse.from(findEntity(id), language);
+    }
+
     @Transactional
     public RoomTypeResponse update(UUID id, RoomTypeRequest request, String language) {
         RoomType roomType = roomTypeRepo.findById(id)

@@ -46,15 +46,17 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Individual physical rooms must belong to a hotel and room type.
 - Rooms must have a number or other operational identifier.
 - Inventory must support active/inactive lifecycle states.
+- Staff must be able to inspect room availability in a weekly, all-rooms calendar. The calendar must distinguish free rooms, assigned reservations, scheduled maintenance blocks, and out-of-service rooms. The booking checkout date is exclusive in this view.
 
 ### Booking
 
-- Guests must be able to search room availability for a date range.
-- A reservation normally reserves one or more specific physical rooms.
-- Staff must be able to change the assigned room for a reservation.
+- Guests must be able to search room-type availability for a date range and guest count. Search results must show date-specific prices but never physical room numbers.
+- Guests select one or more room types, never a specific physical room number.
+- A reservation reserves capacity in its selected room types for the stay; the system automatically assigns a suitable physical room for each item as an internal operational concern.
+- Staff must be able to assign or change the physical room for each reservation item, subject to hotel, room-type, status, maintenance, and overlapping-reservation validation.
 - One reservation may contain multiple rooms.
 - Guests must be able to create a reservation without an account.
-- The system must prevent conflicting reservations for the same room and dates.
+- The system must prevent overbooking a room type and prevent conflicting reservations for the same assigned room and dates.
 - Guests must receive a booking confirmation by email.
 - Guests must be able to view or manage eligible bookings through a secure link.
 - Guest access is initially read-only; unauthenticated guests must contact staff to request booking changes.
@@ -155,7 +157,6 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Whether payments are required in the first usable release.
 - Cancellation and modification policies.
 - Seasonal pricing and minimum-stay rules.
-- Whether a reservation represents a specific room or only a room type until assignment.
 - Email provider selection.
 - Exact staff roles and permissions.
 
@@ -167,6 +168,7 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Hotels may configure whether pay-later bookings are accepted.
 - The system should support hotel-configured limits or confirmation deadlines for unpaid bookings rather than treating every unpaid booking as permanently confirmed.
 - Overlapping bookings for the same physical room are forbidden.
+- Public bookings reserve room-type inventory. The system automatically allocates a suitable physical room without exposing its number to the guest during selection; staff may subsequently change that assignment without changing the booked room type or frozen price.
 - Overlapping bookings associated with the same guest should normally produce a warning rather than an absolute rejection, because groups may legitimately have multiple rooms or reservations. Exact duplicate/abusive patterns can be restricted later.
 - Seasonal, weekend, and holiday pricing rules are configurable per hotel. A rule can set prices for one or more room types, while any omitted room type keeps its base price.
 - Weekend pricing applies to Friday and Saturday nights by default; Sunday is treated as a normal night.

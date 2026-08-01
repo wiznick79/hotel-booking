@@ -59,6 +59,22 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
                                             @Param("statuses") Collection<ReservationStatus> statuses,
                                             @Param("now") java.time.Instant now);
 
+    @Query("""
+            select count(item) from Reservation r join r.items item
+            where item.roomTypeId = :roomTypeId
+            and item.roomId is null
+            and r.checkInDate < :checkOutDate
+            and r.checkOutDate > :checkInDate
+            and r.status in :statuses
+            and (r.status <> pt.hotelbooking.booking.model.entity.ReservationStatus.HELD
+                 or r.holdUntil > :now)
+            """)
+    long countUnassignedRoomTypeReservations(@Param("roomTypeId") String roomTypeId,
+                                             @Param("checkOutDate") LocalDate checkOutDate,
+                                             @Param("checkInDate") LocalDate checkInDate,
+                                             @Param("statuses") Collection<ReservationStatus> statuses,
+                                             @Param("now") java.time.Instant now);
+
     long countByHotelIdAndStatusIn(String hotelId, Collection<ReservationStatus> statuses);
 
     List<Reservation> findByCustomerUsernameOrderByCheckInDateDesc(String customerUsername);

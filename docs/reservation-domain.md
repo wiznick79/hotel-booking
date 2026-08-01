@@ -16,7 +16,9 @@ ReservationItem
 └── Physical Room
 ```
 
-The reservation is associated with physical rooms by default. This is required for the second hotel, where room access will eventually depend on a room-specific PIN. PIN generation and door integration are outside the current scope.
+Public bookings select a room type rather than a room number. A reservation item records that booked type immediately, and the system automatically assigns a suitable physical room internally at creation. Staff may later change that assignment if the replacement is suitable and free for the full stay.
+
+Physical-room assignments remain necessary for the second hotel, where room access will eventually depend on a room-specific PIN. PIN generation and door integration are outside the current scope.
 
 The checkout date is exclusive. A reservation from July 10 through July 14 occupies the nights of July 10, 11, 12, and 13.
 
@@ -35,9 +37,10 @@ Availability must account for:
 - Confirmed and pending reservations
 - Temporary staff holds
 - Rooms marked unavailable for maintenance or other operational reasons
-- Multiple rooms within one reservation
+- Multiple room-type items within one reservation
+- Unassigned reservation items that have already reserved a room type's capacity
 
-The fundamental invariant is that one physical room cannot have overlapping active reservations or holds.
+The inventory invariant is that active reservations and holds must not exceed the number of eligible physical rooms for a room type and date range. Once a room is assigned, the additional invariant is that one physical room cannot have overlapping active reservations or holds.
 
 ## Payment and confirmation
 

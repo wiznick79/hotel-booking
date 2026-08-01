@@ -2,6 +2,9 @@
 *.iml
 AGENTS.md
 target/
+node_modules/
+dist/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

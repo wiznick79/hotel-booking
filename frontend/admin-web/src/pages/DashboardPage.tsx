@@ -5,7 +5,7 @@ import { createHotel } from '../api/hotelApi';
 import { ApiError } from '../api/httpClient';
 import { findCurrentUser, updateHotelAssignments } from '../api/userApi';
 import { useAuth } from '../auth/useAuth';
-import { findReservations } from '../api/reservationApi';
+import { countPendingConfirmations, findReservations } from '../api/reservationApi';
 
 type DashboardPageProps = {
   hotelId: string;
@@ -36,12 +36,17 @@ export function DashboardPage({ hotelId }: DashboardPageProps) {
     const today = new Date();
     const date = today.toISOString().slice(0, 10);
     const tomorrow = new Date(today);
+
     tomorrow.setDate(tomorrow.getDate() + 1);
-    void findReservations(session.accessToken, hotelId, date, tomorrow.toISOString().slice(0, 10))
-      .then((reservations) => setSummary({
-        pending: reservations.filter((reservation) => reservation.status === 'PENDING').length,
+
+    void Promise.all([
+      countPendingConfirmations(session.accessToken, hotelId),
+      findReservations(session.accessToken, hotelId, date, tomorrow.toISOString().slice(0, 10))
+    ])
+      .then(([pending, reservations]) => setSummary({
+        pending,
         arrivals: reservations.filter((reservation) => reservation.checkInDate === date).length,
-        departures: reservations.filter((reservation) => reservation.checkOutDate === date).length,
+        departures: reservations.filter((reservation) => reservation.checkOutDate === date).length
       }))
       .catch(() => setSummary({ pending: 0, arrivals: 0, departures: 0 }));
   }, [hotelId, session]);
@@ -98,7 +103,25 @@ export function DashboardPage({ hotelId }: DashboardPageProps) {
         </div>
       </div>
 
-      {hotelId && <div className="dashboard-cards"><div className="info-card"><p className="eyebrow">Today</p><h2>{summary.arrivals}</h2><p>Arrivals</p></div><div className="info-card"><p className="eyebrow">Today</p><h2>{summary.departures}</h2><p>Departures</p></div><div className="info-card"><p className="eyebrow">Attention</p><h2>{summary.pending}</h2><p>Pending confirmations</p></div></div>}
+      {hotelId && (
+        <div className="dashboard-cards">
+          <div className="info-card">
+            <p className="eyebrow">Today</p>
+            <h2>{summary.arrivals}</h2>
+            <p>Arrivals</p>
+          </div>
+          <div className="info-card">
+            <p className="eyebrow">Today</p>
+            <h2>{summary.departures}</h2>
+            <p>Departures</p>
+          </div>
+          <div className="info-card">
+            <p className="eyebrow">Attention</p>
+            <h2>{summary.pending}</h2>
+            <p>Pending confirmations</p>
+          </div>
+        </div>
+      )}
 
       {!hotelId && (
         <section className="setup-card" aria-labelledby="setup-title">

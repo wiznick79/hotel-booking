@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -28,12 +29,19 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/prometheus",
                                 "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                 "/api/hotels/**",
-                                 "/api/rooms/**",
-                                 "/api/pricing-rules/**",
-                                 "/api/room-unavailabilities/**")
+                                 "/swagger-ui/**",
+                                 "/swagger-ui.html")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/hotels",
+                                "/api/hotels/*",
+                                "/api/rooms",
+                                "/api/rooms/*",
+                                "/api/rooms/bookable",
+                                "/api/room-types",
+                                "/api/room-types/*",
+                                "/api/pricing-rules/quote",
+                                "/api/room-unavailabilities/room/*/availability")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

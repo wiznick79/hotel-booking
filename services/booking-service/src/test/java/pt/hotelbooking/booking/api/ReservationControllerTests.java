@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pt.hotelbooking.booking.service.ReservationService;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
+import pt.hotelbooking.booking.model.dto.ReservationItemResponse;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
 
 import java.time.LocalDate;
@@ -72,7 +73,8 @@ class ReservationControllerTests {
         return new ReservationResponse(
                 UUID.randomUUID(), "hotel-1", "Guest", "+351000000000", null, 1,
                 LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), null,
-                ReservationStatus.PENDING, List.of("room-1"), null, null, null,
+                ReservationStatus.PENDING, List.of(new ReservationItemResponse(
+                UUID.randomUUID(), "room-type-1", null)), null, null, null,
                 false, null, null, null);
     }
 }

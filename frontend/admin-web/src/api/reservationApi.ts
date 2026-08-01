@@ -11,7 +11,7 @@ export type Reservation = {
   checkOutDate: string;
   notes: string | null;
   status: ReservationStatus;
-  roomIds: string[];
+  items: ReservationItem[];
   totalPrice: number | null;
   currency: string | null;
   paymentMode: string;
@@ -19,6 +19,12 @@ export type Reservation = {
   holdUntil: string | null;
   discountCode: string | null;
   discountAmount: number | null;
+};
+
+export type ReservationItem = {
+  id: string;
+  roomTypeId: string | null;
+  roomId: string | null;
 };
 
 export type ReservationStatus =
@@ -41,10 +47,41 @@ export function findReservations(
   return get<Reservation[]>('/reservations', accessToken, parameters);
 }
 
+export function countPendingConfirmations(accessToken: string, hotelId: string) {
+  return get<number>('/reservations/pending-count', accessToken, new URLSearchParams({ hotelId }));
+}
+
+export function findAffectedReservations(
+  accessToken: string,
+  hotelId: string,
+  roomId: string,
+  from: string,
+  to: string,
+) {
+  return get<Reservation[]>(
+    `/reservations/room/${roomId}/affected`,
+    accessToken,
+    new URLSearchParams({ hotelId, from, to }),
+  );
+}
+
 export function confirmReservation(accessToken: string, id: string) {
   return patch<Reservation>(`/reservations/${id}/confirm`, {}, accessToken);
 }
 
 export function cancelReservation(accessToken: string, id: string) {
   return del(`/reservations/${id}`, accessToken);
+}
+
+export function assignReservationRoom(
+  accessToken: string,
+  reservationId: string,
+  itemId: string,
+  roomId: string,
+) {
+  return patch<Reservation>(
+    `/reservations/${reservationId}/items/${itemId}/room`,
+    { roomId },
+    accessToken,
+  );
 }

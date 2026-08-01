@@ -39,6 +39,12 @@ public class RoomTypeController {
         return roomTypeService.findAll(languageResolver.resolve(null, acceptLanguage));
     }
 
+    @GetMapping("/{id}")
+    public RoomTypeResponse findById(@PathVariable UUID id,
+                                     @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
+        return roomTypeService.findById(id, languageResolver.resolve(null, acceptLanguage));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
     public RoomTypeResponse update(@PathVariable UUID id, @Valid @RequestBody RoomTypeRequest request,

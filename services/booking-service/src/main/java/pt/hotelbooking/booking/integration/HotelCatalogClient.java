@@ -65,6 +65,53 @@ public class HotelCatalogClient {
         }
     }
 
+    public RoomTypeDetails getRoomType(String roomTypeId) {
+        try {
+            return restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                    .uri("/api/room-types/{id}", roomTypeId)
+                    .retrieve()
+                    .body(RoomTypeDetails.class);
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Hotel service is unavailable.", exception);
+        }
+    }
+
+    public java.util.List<RoomTypeCatalogItem> findRoomTypes() {
+        try {
+            RoomTypeCatalogItem[] roomTypes = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                    .uri("/api/room-types")
+                    .retrieve()
+                    .body(RoomTypeCatalogItem[].class);
+
+            return roomTypes == null ? java.util.List.of() : java.util.List.of(roomTypes);
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Hotel service is unavailable.", exception);
+        }
+    }
+
+    public java.util.List<RoomDetails> findBookableRooms(
+            String hotelId,
+            String roomTypeId,
+            LocalDate checkInDate,
+            LocalDate checkOutDate) {
+        try {
+            RoomDetails[] rooms = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/rooms/bookable")
+                            .queryParam("hotelId", hotelId)
+                            .queryParam("roomTypeId", roomTypeId)
+                            .queryParam("fromDate", checkInDate)
+                            .queryParam("toDate", checkOutDate)
+                            .build())
+                    .retrieve()
+                    .body(RoomDetails[].class);
+
+            return rooms == null ? java.util.List.of() : java.util.List.of(rooms);
+        } catch (RestClientException exception) {
+            throw new IllegalStateException("Hotel service is unavailable.", exception);
+        }
+    }
+
     public boolean hotelIsActive(String hotelId) {
         try {
             HotelDetails hotel = restClient.mutate().baseUrl(hotelServiceUrl).build().get()
@@ -128,6 +175,24 @@ public class HotelCatalogClient {
             String roomNumber,
             Integer floor,
             String status,
+            boolean active) {
+    }
+
+    public record RoomTypeDetails(
+            UUID id,
+            UUID hotelId,
+            int maximumOccupancy,
+            boolean active) {
+    }
+
+    public record RoomTypeCatalogItem(
+            UUID id,
+            UUID hotelId,
+            int maximumOccupancy,
+            BigDecimal basePrice,
+            String language,
+            String name,
+            String description,
             boolean active) {
     }
 
