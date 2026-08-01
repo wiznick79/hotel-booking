@@ -1,0 +1,19 @@
+name: Dependency vulnerability scan
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    name: Block newly introduced dependency vulnerabilities
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.8
+    with:
+      upload-sarif: false
+      fail-on-vuln: true
