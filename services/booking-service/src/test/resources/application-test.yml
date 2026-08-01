@@ -8,12 +8,19 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
+  kafka:
+    admin:
+      auto-create: false
 
 jwt:
   secret: test-secret-that-is-long-enough-for-hmac-sha256
 
 guest-access:
   encryption-secret: test-guest-access-encryption-secret
+
+booking-events:
+  topics:
+    auto-create: false
 
 booking:
   outbox:
