@@ -4,7 +4,7 @@ WORKDIR /build
 COPY . .
 RUN chmod +x mvnw && ./mvnw -pl services/hotel-service -am package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
