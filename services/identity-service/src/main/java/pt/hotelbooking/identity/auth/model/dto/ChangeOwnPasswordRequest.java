@@ -9,6 +9,6 @@ public record ChangeOwnPasswordRequest(
         String currentPassword,
 
         @NotBlank
-        @Size(min = 12)
+        @Size(min = 10)
         String newPassword) {
 }

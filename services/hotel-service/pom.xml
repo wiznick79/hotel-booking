@@ -16,6 +16,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>pt.hotelbooking</groupId>
+            <artifactId>security-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>

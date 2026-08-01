@@ -115,8 +115,9 @@ The transactional outbox avoids the classic failure mode where a reservation com
 
 ## Security
 
-- Identity-service issues signed JWT access tokens containing identity, roles, permissions, and assigned hotel IDs.
-- Gateway and downstream services validate the same JWT secret in the current scope. In a larger deployment this can evolve to asymmetric signing/key distribution or an external identity provider.
+- Identity-service issues RS256-signed JWT access tokens containing identity, roles, permissions, and assigned hotel IDs.
+- Only identity-service receives the RSA private signing key. The gateway and downstream services validate tokens using the matching public key, so compromising a resource service cannot mint valid access tokens.
+- Local and CI environments generate disposable RSA key pairs. Staging stores the private key as an AWS Systems Manager `SecureString` and the public key as a `String`; neither key is committed to Git.
 - Authorisation is permission-based; hotel-scoped operations additionally verify that a staff user is assigned to the target hotel.
 - Guests can book without an account. Guest access links use cryptographically random tokens stored only as hashes and expire after checkout plus a configured grace period.
 - Public write endpoints have Redis-backed, IP-keyed gateway rate limits.

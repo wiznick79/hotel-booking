@@ -33,8 +33,11 @@ umask 077
 cat > "$temporary_environment_file" <<EOF
 POSTGRES_USER=hotel_booking
 POSTGRES_PASSWORD=$(read_parameter postgres-password)
-JWT_SECRET=$(read_parameter jwt-secret)
+JWT_PRIVATE_KEY_BASE64=$(read_parameter jwt-private-key-base64)
+JWT_PUBLIC_KEY_BASE64=$(read_parameter jwt-public-key-base64)
 GUEST_ACCESS_ENCRYPTION_SECRET=$(read_parameter guest-access-encryption-secret)
+IDENTITY_BOOTSTRAP_USERNAME=$(read_parameter identity-bootstrap-username)
+IDENTITY_BOOTSTRAP_PASSWORD=$(read_parameter identity-bootstrap-password)
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=$(read_parameter grafana-admin-password)
 USE_SWAGGER=false

@@ -2,7 +2,7 @@ package pt.hotelbooking.booking;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.Test;
@@ -20,8 +20,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -33,14 +36,12 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.flyway.enabled=true",
                 "spring.jpa.hibernate.ddl-auto=validate",
-                "jwt.secret=booking-integration-secret-that-is-long-enough-for-hmac-sha256",
                 "booking-events.topics.auto-create=false",
                 "booking.outbox.dispatch-delay-ms=3600000"
         })
 class BookingAuthorizationHttpIntegrationTests {
 
-    private static final String JWT_SECRET =
-            "booking-integration-secret-that-is-long-enough-for-hmac-sha256";
+    private static final KeyPair JWT_KEY_PAIR = createKeyPair();
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
@@ -60,6 +61,8 @@ class BookingAuthorizationHttpIntegrationTests {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("jwt.public-key-base64", () -> Base64.getEncoder().encodeToString(
+                JWT_KEY_PAIR.getPublic().getEncoded()));
     }
 
     @Test
@@ -114,9 +117,19 @@ class BookingAuthorizationHttpIntegrationTests {
                 .claim("hotelIds", List.of("hotel-1"))
                 .build();
 
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-        jwt.sign(new MACSigner(JWT_SECRET.getBytes(StandardCharsets.UTF_8)));
+        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claims);
+        jwt.sign(new RSASSASigner((RSAPrivateKey) JWT_KEY_PAIR.getPrivate()));
 
         return jwt.serialize();
+    }
+
+    private static KeyPair createKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not create the test JWT key pair.", exception);
+        }
     }
 }

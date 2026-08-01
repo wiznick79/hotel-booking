@@ -18,6 +18,7 @@
     <name>hotel-booking</name>
 
     <modules>
+        <module>security-common</module>
         <module>services/hotel-service</module>
         <module>services/booking-service</module>
         <module>services/identity-service</module>

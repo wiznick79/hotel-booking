@@ -59,7 +59,10 @@ services:
   identity-service:
     ports: !reset []
     environment:
+      SPRING_PROFILES_ACTIVE: postgres
       AUTH_REFRESH_COOKIE_SECURE: "true"
+      IDENTITY_BOOTSTRAP_USERNAME: ${IDENTITY_BOOTSTRAP_USERNAME:?IDENTITY_BOOTSTRAP_USERNAME must be set}
+      IDENTITY_BOOTSTRAP_PASSWORD: ${IDENTITY_BOOTSTRAP_PASSWORD:?IDENTITY_BOOTSTRAP_PASSWORD must be set}
 
   notification-service:
     ports: !reset []
