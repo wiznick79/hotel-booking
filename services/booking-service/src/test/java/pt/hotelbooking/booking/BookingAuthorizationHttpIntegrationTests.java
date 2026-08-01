@@ -34,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "spring.flyway.enabled=true",
                 "spring.jpa.hibernate.ddl-auto=validate",
                 "jwt.secret=booking-integration-secret-that-is-long-enough-for-hmac-sha256",
+                "booking-events.topics.auto-create=false",
                 "booking.outbox.dispatch-delay-ms=3600000"
         })
 class BookingAuthorizationHttpIntegrationTests {

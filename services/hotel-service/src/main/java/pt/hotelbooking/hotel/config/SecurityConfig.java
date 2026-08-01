@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/error",
                                 "/actuator/health",
                                 "/actuator/prometheus",
                                 "/v3/api-docs/**",

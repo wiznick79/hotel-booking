@@ -10,9 +10,16 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.web.client.RestClient;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -31,17 +38,21 @@ import pt.hotelbooking.hotel.model.dto.RoomTypeRequest;
 import pt.hotelbooking.hotel.model.dto.HotelResponse;
 import pt.hotelbooking.hotel.model.dto.RoomResponse;
 import pt.hotelbooking.hotel.model.dto.RoomTypeResponse;
-import pt.hotelbooking.hotel.service.HotelService;
-import pt.hotelbooking.hotel.service.RoomService;
-import pt.hotelbooking.hotel.service.RoomTypeService;
 import pt.hotelbooking.notification.NotificationServiceApplication;
 import pt.hotelbooking.notification.repository.NotificationRepository;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
+import javax.crypto.spec.SecretKeySpec;
+
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +63,8 @@ class BookingWorkflowIntegrationTests {
     private static final String RESERVATION_EVENTS_TOPIC = "reservation-events";
 
     private static final String RESERVATION_EVENTS_DLT = RESERVATION_EVENTS_TOPIC + ".DLT";
+
+    private static final String JWT_SECRET = "integration-secret-that-is-long-enough-for-hmac-sha256";
 
     @Container
     private static final KafkaContainer KAFKA = new KafkaContainer(
@@ -81,10 +94,13 @@ class BookingWorkflowIntegrationTests {
 
         try {
             hotelContext = startHotelService();
+            RoomResponse room = seedHotel(portOf(hotelContext));
             notificationContext = startNotificationService();
             bookingContext = startBookingService(portOf(hotelContext));
 
-            RoomResponse room = seedHotel(hotelContext);
+            assertThat(bookingContext.getEnvironment().getProperty("hotel-service.url"))
+                    .isEqualTo("http://localhost:" + portOf(hotelContext));
+
             ReservationResponse reservation = bookingContext.getBean(ReservationService.class).create(
                     new ReservationRequest(
                             room.hotelId().toString(),
@@ -95,7 +111,7 @@ class BookingWorkflowIntegrationTests {
                             LocalDate.now().plusDays(10),
                             LocalDate.now().plusDays(12),
                             null,
-                            List.of(room.id().toString()),
+                            List.of(room.roomTypeId().toString()),
                             PaymentMode.PAY_AT_RECEPTION,
                             null));
 
@@ -149,6 +165,7 @@ class BookingWorkflowIntegrationTests {
         properties.put("spring.kafka.consumer.group-id", "notification-service-integration-test");
         properties.put("spring.kafka.consumer.auto-offset-reset", "earliest");
         properties.put("booking-events.topic", RESERVATION_EVENTS_TOPIC);
+        properties.put("notification.kafka.listener.enabled", "true");
         properties.put("spring.mail.host", "localhost");
         properties.put("spring.mail.port", "1025");
         properties.put("notification.email.from", "no-reply@integration.test");
@@ -181,8 +198,8 @@ class BookingWorkflowIntegrationTests {
                 Map.entry("spring.jpa.hibernate.ddl-auto", "create-drop"),
                 Map.entry("spring.flyway.enabled", "false"),
                 Map.entry("spring.main.banner-mode", "off"),
-                Map.entry("jwt.secret", "integration-secret-that-is-long-enough-for-hmac-sha256"),
-                Map.entry("JWT_SECRET", "integration-secret-that-is-long-enough-for-hmac-sha256")));
+                Map.entry("jwt.secret", JWT_SECRET),
+                Map.entry("JWT_SECRET", JWT_SECRET)));
     }
 
     private long totalRecordsInTopic(String topic) {
@@ -206,20 +223,63 @@ class BookingWorkflowIntegrationTests {
         }
     }
 
-    private RoomResponse seedHotel(ConfigurableApplicationContext hotelContext) {
-        HotelService hotelService = hotelContext.getBean(HotelService.class);
-        RoomTypeService roomTypeService = hotelContext.getBean(RoomTypeService.class);
-        RoomService roomService = hotelContext.getBean(RoomService.class);
+    private RoomResponse seedHotel(int hotelPort) {
+        RestClient client = RestClient.builder()
+                .baseUrl("http://localhost:" + hotelPort)
+                .build();
 
-        HotelResponse hotel = hotelService.create(new HotelRequest(
-                "Integration Hotel", null, "Main Street", "Lisbon", "Portugal", "en"));
-        RoomTypeResponse roomType = roomTypeService.create(new RoomTypeRequest(
-                hotel.id(),
-                2,
-                BigDecimal.valueOf(100),
-                Map.of("en", new RoomTypeRequest.TranslationRequest("Double Room", null))), "en");
-        RoomResponse room = roomService.create(new RoomRequest(hotel.id(), roomType.id(), "101", 1));
+        HotelResponse hotel = client.post()
+                .uri("/api/hotels")
+                .header("Authorization", bearerToken(List.of("HOTEL_MANAGE"), List.of()))
+                .body(new HotelRequest(
+                        "Integration Hotel", null, "Main Street", "Lisbon", "Portugal", "en"))
+                .retrieve()
+                .body(HotelResponse.class);
+
+        assertThat(hotel).isNotNull();
+
+        RoomTypeResponse roomType = client.post()
+                .uri("/api/room-types")
+                .header("Authorization", bearerToken(List.of("ROOM_TYPE_MANAGE"), List.of(hotel.id())))
+                .header("Accept-Language", "en")
+                .body(new RoomTypeRequest(
+                        hotel.id(),
+                        2,
+                        BigDecimal.valueOf(100),
+                        Map.of("en", new RoomTypeRequest.TranslationRequest("Double Room", null))))
+                .retrieve()
+                .body(RoomTypeResponse.class);
+
+        assertThat(roomType).isNotNull();
+
+        RoomResponse room = client.post()
+                .uri("/api/rooms")
+                .header("Authorization", bearerToken(List.of("ROOM_MANAGE"), List.of(hotel.id())))
+                .body(new RoomRequest(hotel.id(), roomType.id(), "101", 1))
+                .retrieve()
+                .body(RoomResponse.class);
+
+        assertThat(room).isNotNull();
         return room;
+    }
+
+    private String bearerToken(List<String> permissions, List<UUID> hotelIds) {
+        SecretKeySpec key = new SecretKeySpec(
+                JWT_SECRET.getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256");
+        JwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
+        Instant now = Instant.now();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("integration-test")
+                .issuedAt(now)
+                .expiresAt(now.plus(Duration.ofMinutes(5)))
+                .claim("permissions", permissions)
+                .claim("hotelIds", hotelIds.stream().map(UUID::toString).toList())
+                .build();
+
+        String token = encoder.encode(JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        return "Bearer " + token;
     }
 
     private int portOf(ConfigurableApplicationContext context) {

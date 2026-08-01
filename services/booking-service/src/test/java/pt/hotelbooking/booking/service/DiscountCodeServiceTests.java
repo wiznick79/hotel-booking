@@ -31,7 +31,7 @@ class DiscountCodeServiceTests {
         DiscountCode code = new DiscountCode(
                 "hotel-1", "SUMMER", BigDecimal.TEN, null,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1), null);
-        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCase("hotel-1", "summer"))
+        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse("hotel-1", "summer"))
                 .thenReturn(Optional.of(code));
 
         DiscountCodeService.DiscountResult result = service.apply(
@@ -46,7 +46,7 @@ class DiscountCodeServiceTests {
         DiscountCode code = new DiscountCode(
                 "hotel-1", "SUMMER", BigDecimal.TEN, null,
                 LocalDate.of(2025, 1, 1), LocalDate.of(2025, 2, 1), null);
-        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCase("hotel-1", "SUMMER"))
+        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse("hotel-1", "SUMMER"))
                 .thenReturn(Optional.of(code));
 
         assertThatThrownBy(() -> service.apply(

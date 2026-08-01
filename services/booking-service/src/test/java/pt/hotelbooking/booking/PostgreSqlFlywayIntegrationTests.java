@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.flyway.enabled=true",
         "spring.jpa.hibernate.ddl-auto=validate",
         "jwt.secret=test-secret-that-is-long-enough-for-hmac-sha256",
+        "booking-events.topics.auto-create=false",
         "booking.outbox.dispatch-delay-ms=3600000"
 })
 class PostgreSqlFlywayIntegrationTests {
@@ -76,13 +77,12 @@ class PostgreSqlFlywayIntegrationTests {
                 null);
 
         reservation.addRoomType("room-type-1");
-        reservationRepository.saveAndFlush(reservation);
         reservation.getItems().getFirst().assignRoom("room-1");
-        reservationRepository.flush();
+        reservationRepository.saveAndFlush(reservation);
 
         boolean blocking = reservationRepository.hasBlockingReservation(
                 "room-1",
-                LocalDate.of(2026, 8, 15),
+                LocalDate.of(2026, 8, 14),
                 LocalDate.of(2026, 8, 12),
                 List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
                 Instant.now());
