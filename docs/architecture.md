@@ -78,7 +78,7 @@ Each service owns its database. Services never read or write another service's s
 | **Admin web** | React + TypeScript + Vite application for owners, managers, and staff. It manages inventory, rates, policies, users, reservations, room reassignment, and the room-availability calendar. | In local development, Vite proxies `/api` to the gateway. |
 | **Public web** | React + TypeScript + Vite guest website. Guests browse a hotel, search date-specific room-type availability and prices, then request a booking without an account. | In local development, Vite proxies `/api` to the gateway. |
 
-The frontends are currently development applications, not independently containerized or included in the staging deployment pipeline. Their production hosting and hotel-selection strategy are later work. The public website currently chooses the first configured hotel as a temporary development shortcut; the intended future approach is host-based resolution, such as one subdomain per hotel.
+Both frontends have production Docker images: a Node build stage creates static assets and a small Nginx runtime serves them. Local Compose exposes public-web on `3002` and admin-web on `3004`. The staging Compose override keeps those ports private and Caddy publishes public-web at `hotel.wiznick.net` and admin-web at `admin.hotel.wiznick.net`. Production deployment remains pending. The public website currently chooses the first configured hotel as a temporary development shortcut; the intended future approach is host-based resolution, such as one subdomain per hotel.
 
 ## Main request and event flows
 
@@ -144,7 +144,7 @@ The service ports are also exposed locally for diagnostics: hotel `8081`, bookin
 
 ## Deployment and CI/CD
 
-- **GitHub Actions** runs Maven verification, validates Docker Compose, and builds Docker images for pushes and pull requests targeting `main`.
+- **GitHub Actions** runs Maven verification, validates Docker Compose, and builds backend and frontend Docker images for pushes and pull requests targeting `main`.
 - **Terraform** defines the AWS staging environment in `eu-west-3`: VPC, security group, Elastic IP, Amazon Linux 2023 EC2 host, Systems Manager access, an S3 deployment-artifact bucket, and GitHub OIDC deployment role.
 - The staging host is administered through AWS Systems Manager Session Manager; SSH is not exposed.
 - A manual deployment workflow delivers the repository artifact from GitHub to the host using short-lived OIDC credentials and Systems Manager. The host reads secrets from Parameter Store and starts the staging Compose override.
@@ -152,7 +152,7 @@ The service ports are also exposed locally for diagnostics: hotel `8081`, bookin
 
 ## Intentional current limitations and next evolution
 
-- The public/admin frontends need production hosting, CI builds, and deployment integration.
+- The frontend containers need their first staging deployment and a DNS record for `admin.hotel.wiznick.net`.
 - Public hotel resolution must move from “first hotel” to a configured hostname or explicit hotel selection.
 - Internal synchronous calls currently use configured service URLs. Service discovery and/or a service mesh are not needed for the current single-host Compose deployment, but are valid future learning steps.
 - Kafka is self-managed in Compose. AWS MSK, SQS/SNS, or a managed Kafka provider are deployment alternatives, not application-level requirements.
