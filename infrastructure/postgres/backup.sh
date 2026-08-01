@@ -6,7 +6,7 @@ readonly project_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly backup_root_directory="${BACKUP_DIRECTORY:-$project_directory/infrastructure/.data/backups}"
 readonly postgres_container="${POSTGRES_CONTAINER:-hotel-booking-postgres}"
 readonly postgres_username="${POSTGRES_USER:-hotel_booking}"
-readonly timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly timestamp="${BACKUP_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
 readonly backup_directory="$backup_root_directory/$timestamp"
 
 readonly databases=(
