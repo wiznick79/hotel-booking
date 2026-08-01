@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
-import pt.hotelbooking.booking.model.dto.RoomReassignmentRequest;
+import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
 import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.service.ReservationService;
 import pt.hotelbooking.booking.config.HotelScopeAuthorization;
@@ -88,6 +88,23 @@ public class ReservationController {
         return reservationService.findByHotelAndDateRange(hotelId, from, to);
     }
 
+    @GetMapping("/pending-count")
+    @PreAuthorize("hasAuthority('RESERVATION_READ')")
+    public long countPendingConfirmations(@RequestParam String hotelId,
+                                          Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, hotelId);
+        return reservationService.countPendingConfirmations(hotelId);
+    }
+
+    @GetMapping("/availability")
+    public List<pt.hotelbooking.booking.model.dto.AvailabilitySearchResponse> searchAvailability(
+            @RequestParam String hotelId,
+            @RequestParam LocalDate checkInDate,
+            @RequestParam LocalDate checkOutDate,
+            @RequestParam int guestCount) {
+        return reservationService.searchAvailability(hotelId, checkInDate, checkOutDate, guestCount);
+    }
+
     @GetMapping("/room/{roomId}/affected")
     @PreAuthorize("hasAuthority('RESERVATION_READ')")
     public List<ReservationResponse> findAffectedByRoomAndDateRange(
@@ -131,13 +148,14 @@ public class ReservationController {
         return reservationService.placeHold(id, holdUntil);
     }
 
-    @PatchMapping("/{id}/rooms")
+    @PatchMapping("/{id}/items/{itemId}/room")
     @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
-    public ReservationResponse reassignRoom(@PathVariable UUID id,
-                                            @Valid @RequestBody RoomReassignmentRequest request,
+    public ReservationResponse assignRoom(@PathVariable UUID id,
+                                          @PathVariable UUID itemId,
+                                          @Valid @RequestBody RoomAssignmentRequest request,
                                             Authentication authentication) {
         requireStaffHotelAccess(id, authentication);
-        return reservationService.reassignRoom(id, request, authentication.getName());
+        return reservationService.assignRoom(id, itemId, request, authentication.getName());
     }
 
     private void requireStaffHotelAccess(UUID reservationId, Authentication authentication) {

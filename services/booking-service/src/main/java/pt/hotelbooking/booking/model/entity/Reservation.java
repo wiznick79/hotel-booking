@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.Duration;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
@@ -67,8 +68,8 @@ public class Reservation extends BookingBaseEntity {
         this.customerUsername = customerUsername;
     }
 
-    public void addRoom(String roomId) {
-        items.add(new ReservationItem(this, roomId));
+    public void addRoomType(String roomTypeId) {
+        items.add(new ReservationItem(this, roomTypeId));
     }
 
     public void cancel() {
@@ -129,9 +130,9 @@ public class Reservation extends BookingBaseEntity {
         this.notes = notes;
     }
 
-    public void replaceRooms(List<String> roomIds) {
+    public void replaceRoomTypes(List<String> roomTypeIds) {
         items.clear();
-        roomIds.forEach(this::addRoom);
+        roomTypeIds.forEach(this::addRoomType);
     }
 
     public boolean hasValidGuestAccess(Instant now) {
@@ -146,12 +147,22 @@ public class Reservation extends BookingBaseEntity {
         guestAccessTokenExpiresAt = null;
     }
 
-    public void reassignRoom(String currentRoomId, String replacementRoomId) {
+    public void assignRoom(UUID itemId, String roomId) {
         ReservationItem item = items.stream()
-                .filter(reservationItem -> reservationItem.getRoomId().equals(currentRoomId))
+                .filter(reservationItem -> reservationItem.getId().equals(itemId))
                 .findFirst()
-                .orElseThrow(() -> new RoomReassignmentException("Room is not assigned to this reservation."));
+                .orElseThrow(() -> new RoomReassignmentException("Reservation item does not belong to this reservation."));
 
-        item.changeRoom(replacementRoomId);
+        item.assignRoom(roomId);
+    }
+
+    public void assignFirstUnassignedRoomOfType(String roomTypeId, String roomId) {
+        ReservationItem item = items.stream()
+                .filter(reservationItem -> roomTypeId.equals(reservationItem.getRoomTypeId()))
+                .filter(reservationItem -> reservationItem.getRoomId() == null)
+                .findFirst()
+                .orElseThrow(() -> new RoomReassignmentException("No unassigned reservation item exists for this room type."));
+
+        item.assignRoom(roomId);
     }
 }

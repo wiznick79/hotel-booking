@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CreateHotelRequest } from '../api/hotelApi';
 import { createHotel } from '../api/hotelApi';
 import { ApiError } from '../api/httpClient';
 import { findCurrentUser, updateHotelAssignments } from '../api/userApi';
 import { useAuth } from '../auth/useAuth';
+import { countPendingConfirmations, findReservations } from '../api/reservationApi';
 
 type DashboardPageProps = {
-  hasAssignedHotel: boolean;
+  hotelId: string;
 };
 
 const initialHotel: CreateHotelRequest = {
@@ -19,12 +20,36 @@ const initialHotel: CreateHotelRequest = {
   defaultLanguage: 'en',
 };
 
-export function DashboardPage({ hasAssignedHotel }: DashboardPageProps) {
+export function DashboardPage({ hotelId }: DashboardPageProps) {
   const { refresh, session } = useAuth();
   const [hotel, setHotel] = useState(initialHotel);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [summary, setSummary] = useState({ pending: 0, arrivals: 0, departures: 0 });
+
+  useEffect(() => {
+    if (!session || !hotelId) {
+      setSummary({ pending: 0, arrivals: 0, departures: 0 });
+      return;
+    }
+    const today = new Date();
+    const date = today.toISOString().slice(0, 10);
+    const tomorrow = new Date(today);
+
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    void Promise.all([
+      countPendingConfirmations(session.accessToken, hotelId),
+      findReservations(session.accessToken, hotelId, date, tomorrow.toISOString().slice(0, 10))
+    ])
+      .then(([pending, reservations]) => setSummary({
+        pending,
+        arrivals: reservations.filter((reservation) => reservation.checkInDate === date).length,
+        departures: reservations.filter((reservation) => reservation.checkOutDate === date).length
+      }))
+      .catch(() => setSummary({ pending: 0, arrivals: 0, departures: 0 }));
+  }, [hotelId, session]);
 
   async function handleHotelSetup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,14 +103,27 @@ export function DashboardPage({ hasAssignedHotel }: DashboardPageProps) {
         </div>
       </div>
 
-      {hasAssignedHotel && (
-        <div className="info-card">
-          <h2>Admin panel foundation</h2>
-          <p>The authenticated shell is ready. Reservations are the first connected management area.</p>
+      {hotelId && (
+        <div className="dashboard-cards">
+          <div className="info-card">
+            <p className="eyebrow">Today</p>
+            <h2>{summary.arrivals}</h2>
+            <p>Arrivals</p>
+          </div>
+          <div className="info-card">
+            <p className="eyebrow">Today</p>
+            <h2>{summary.departures}</h2>
+            <p>Departures</p>
+          </div>
+          <div className="info-card">
+            <p className="eyebrow">Attention</p>
+            <h2>{summary.pending}</h2>
+            <p>Pending confirmations</p>
+          </div>
         </div>
       )}
 
-      {!hasAssignedHotel && (
+      {!hotelId && (
         <section className="setup-card" aria-labelledby="setup-title">
           <div>
             <h2 id="setup-title">Set up your first hotel</h2>

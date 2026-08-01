@@ -22,6 +22,8 @@ main:not(.login-page) { margin: 0 auto; max-width: 75rem; padding: 2.5rem 2rem; 
 .page-heading p:not(.eyebrow), .info-card p, .empty-state p, .login-card > p { color: #61707c; line-height: 1.55; }
 .eyebrow { color: #8c7444; font-size: .75rem; font-weight: 750; letter-spacing: .08em; margin: 0 0 .45rem; text-transform: uppercase; }
 .info-card, .empty-state { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; padding: 1.5rem; }
+.dashboard-cards { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-cards h2 { font-size: 2rem; margin: .25rem 0; }
 .setup-card { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; padding: 1.5rem; }
 .setup-card h2 { margin: 0; }
 .setup-card > div > p { color: #61707c; line-height: 1.55; }
@@ -49,15 +51,50 @@ main:not(.login-page) { margin: 0 auto; max-width: 75rem; padding: 2.5rem 2rem; 
 .filter-bar label { display: grid; font-size: .85rem; font-weight: 650; gap: .4rem; }
 .filter-bar input { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; padding: .6rem; }
 .table-container { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; overflow-x: auto; }
+.view-switcher { display: flex; gap: .75rem; margin: 0 0 1.25rem; }
+.availability-calendar { background: #fff; border: 1px solid #e2e6e9; border-radius: .75rem; padding: 1.5rem; }
+.calendar-toolbar { align-items: flex-start; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 1.5rem; }
+.calendar-toolbar h2 { margin: 0; }
+.calendar-toolbar p { color: #61707c; line-height: 1.5; margin: .45rem 0 0; }
+.calendar-navigation { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.availability-grid { min-width: 52rem; overflow: auto; }
+.availability-grid-row { display: grid; grid-template-columns: minmax(10rem, 1.4fr) repeat(7, minmax(5.5rem, 1fr)); }
+.availability-grid-row > div { border-bottom: 1px solid #edf0f2; border-right: 1px solid #edf0f2; min-height: 4.25rem; padding: .75rem; }
+.availability-grid-row > div:last-child { border-right: 0; }
+.availability-grid-heading > div { color: #61707c; font-size: .75rem; font-weight: 700; letter-spacing: .05em; min-height: auto; text-transform: uppercase; }
+.availability-grid-heading strong { color: #1d2730; display: block; font-size: .85rem; letter-spacing: normal; margin-top: .25rem; text-transform: none; }
+.calendar-room { display: grid; gap: .25rem; }
+.calendar-room span { color: #61707c; font-size: .8rem; }
+.availability-cell { margin: .45rem; min-height: 3.3rem !important; padding: 0 !important; }
+.availability-grid .availability-cell { cursor: pointer; }
+.availability-grid .availability-cell:hover { box-shadow: inset 0 0 0 2px #284b63; }
+.availability-free { background: #b8dfc8; }
+.availability-booked { background: #df6c63; }
+.availability-maintenance { background: #fff3d9; }
+.availability-unavailable { background: #e8edef; }
+.calendar-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+.calendar-legend span { align-items: center; display: inline-flex; font-size: .85rem; gap: .4rem; }
+.calendar-legend i { border-radius: .2rem; display: inline-block; height: 1rem; margin: 0; min-height: auto !important; width: 1rem; }
+.calendar-block-form { border-top: 1px solid #e2e6e9; margin-top: 1.5rem; padding-top: 1.5rem; }
+.calendar-block-form h3 { margin: 0; }
+.danger-button { background: #9b2921; margin-right: auto; }
+.assignment-line { align-items: center; display: flex; gap: .25rem; justify-content: space-between; }
+.assignment-form { display: grid; gap: 1rem; margin-top: 1.5rem; max-width: 38rem; }
+.assignment-form h2, .assignment-form p { margin: 0; }
+.assignment-form p { color: #61707c; }
+.assignment-form label { display: grid; font-size: .85rem; font-weight: 650; gap: .4rem; }
+.assignment-form select { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; padding: .65rem; }
+.reservation-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 table { border-collapse: collapse; min-width: 44rem; width: 100%; }
 th, td { border-bottom: 1px solid #edf0f2; padding: 1rem; text-align: left; }
 th { color: #61707c; font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
 tbody tr:last-child td { border-bottom: 0; }
 .table-subtext { color: #61707c; display: block; font-size: .85rem; margin-top: .25rem; }
 .status { border-radius: 999px; display: inline-block; font-size: .8rem; font-weight: 700; padding: .3rem .55rem; }
-.status-pending, .status-held { background: #fff3d9; color: #865b00; }
-.status-confirmed, .status-checked_in, .status-checked_out { background: #e4f4eb; color: #216c46; }
-.status-cancelled, .status-no_show { background: #f9e4e3; color: #9b2921; }
+.status-positive { background: #e4f4eb; color: #216c46; }
+.status-warning { background: #fff3d9; color: #865b00; }
+.status-negative { background: #f9e4e3; color: #9b2921; }
+.status-neutral { background: #e8edef; color: #405563; }
 .login-page { align-items: center; background: linear-gradient(135deg, #f5f6f8 0%, #e6ebed 100%); display: flex; justify-content: center; min-height: 100vh; padding: 1.5rem; }
 .login-card { background: #fff; border: 1px solid #e1e5e8; border-radius: .85rem; box-shadow: 0 1rem 3rem rgb(20 37 47 / 10%); max-width: 25rem; padding: 2rem; text-align: center; width: 100%; }
 .login-card .brand-mark { margin-bottom: 1.25rem; }
@@ -67,4 +104,4 @@ tbody tr:last-child td { border-bottom: 0; }
 .login-card input:focus, .topbar select:focus { outline: 3px solid rgb(187 165 119 / 35%); outline-offset: 1px; }
 .form-error { color: #b42318; font-size: .9rem; margin: 0; }
 .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-@media (max-width: 48rem) { .app-shell { display: block; } .sidebar { padding: 1rem; } .sidebar .brand { margin-bottom: 1rem; } .sidebar nav { display: flex; overflow-x: auto; } .sidebar a { white-space: nowrap; } .topbar, main:not(.login-page) { padding-left: 1rem; padding-right: 1rem; } .filter-bar { align-items: stretch; flex-direction: column; } .hotel-form, .annual-date-range { grid-template-columns: 1fr; } }
+@media (max-width: 48rem) { .app-shell { display: block; } .sidebar { padding: 1rem; } .sidebar .brand { margin-bottom: 1rem; } .sidebar nav { display: flex; overflow-x: auto; } .sidebar a { white-space: nowrap; } .topbar, main:not(.login-page) { padding-left: 1rem; padding-right: 1rem; } .filter-bar, .calendar-toolbar { align-items: stretch; flex-direction: column; } .calendar-navigation { justify-content: flex-start; } .hotel-form, .annual-date-range { grid-template-columns: 1fr; } }

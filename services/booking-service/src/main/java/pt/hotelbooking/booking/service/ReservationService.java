@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
+import pt.hotelbooking.booking.model.dto.AvailabilitySearchResponse;
 import pt.hotelbooking.booking.model.entity.Reservation;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
 import pt.hotelbooking.booking.model.entity.AuditLog;
@@ -15,7 +16,7 @@ import pt.hotelbooking.booking.integration.HotelCatalogClient;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
 import pt.hotelbooking.booking.exception.ReservationNotFoundException;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
-import pt.hotelbooking.booking.model.dto.RoomReassignmentRequest;
+import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
 import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.event.EventPublisher;
 import pt.hotelbooking.booking.event.ReservationCreatedEvent;
@@ -102,6 +103,52 @@ public class ReservationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public long countPendingConfirmations(String hotelId) {
+        return reservationRepo.countByHotelIdAndStatusIn(
+                hotelId,
+                List.of(ReservationStatus.PENDING, ReservationStatus.HELD));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AvailabilitySearchResponse> searchAvailability(
+            String hotelId,
+            LocalDate checkInDate,
+            LocalDate checkOutDate,
+            int guestCount) {
+        if (!checkOutDate.isAfter(checkInDate)) {
+            throw new IllegalArgumentException("Check-out date must be after check-in date.");
+        }
+
+        if (guestCount < 1) {
+            throw new IllegalArgumentException("At least one guest is required.");
+        }
+
+        if (!hotelCatalogClient.hotelIsActive(hotelId)) {
+            return List.of();
+        }
+
+        List<ReservationStatus> blockingStatuses = blockingStatuses();
+
+        return hotelCatalogClient.findRoomTypes().stream()
+                .filter(roomType -> roomType.hotelId().toString().equals(hotelId))
+                .filter(HotelCatalogClient.RoomTypeCatalogItem::active)
+                .filter(roomType -> roomType.maximumOccupancy() >= guestCount)
+                .filter(roomType -> hasAvailableRoomTypeCapacity(
+                        hotelId,
+                        roomType.id().toString(),
+                        checkInDate,
+                        checkOutDate,
+                        blockingStatuses))
+                .map(roomType -> new AvailabilitySearchResponse(
+                        roomType.id(),
+                        roomType.name(),
+                        roomType.maximumOccupancy(),
+                        hotelCatalogClient.quoteRoomType(roomType.id(), checkInDate, checkOutDate),
+                        "EUR"))
+                .toList();
+    }
+
     @Transactional
     public void cancel(java.util.UUID id) {
         Reservation reservation = reservationRepo.findById(id)
@@ -158,32 +205,53 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationResponse reassignRoom(java.util.UUID id, RoomReassignmentRequest request) {
-        return reassignRoom(id, request, "system");
+    public ReservationResponse assignRoom(UUID id, UUID itemId, RoomAssignmentRequest request) {
+        return assignRoom(id, itemId, request, "system");
     }
 
     @Transactional
-    public ReservationResponse reassignRoom(java.util.UUID id,
-                                             RoomReassignmentRequest request,
-                                             String actor) {
+    public ReservationResponse assignRoom(UUID id,
+                                          UUID itemId,
+                                          RoomAssignmentRequest request,
+                                          String actor) {
         Reservation reservation = reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        var item = reservation.getItems().stream()
+                .filter(reservationItem -> reservationItem.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RoomReassignmentException("Reservation item does not belong to this reservation."));
+        HotelCatalogClient.RoomDetails room = hotelCatalogClient.getRoom(request.roomId());
+
+        if (!room.active() || !"AVAILABLE".equals(room.status())
+                || !room.hotelId().toString().equals(reservation.getHotelId())
+                || !room.roomTypeId().toString().equals(item.getRoomTypeId())
+                || !hotelCatalogClient.roomIsAvailable(request.roomId(), reservation.getCheckInDate(),
+                reservation.getCheckOutDate())) {
+            throw new RoomReassignmentException("Room is not suitable for this reservation item.");
+        }
 
         List<ReservationStatus> blockingStatuses = List.of(ReservationStatus.PENDING,
                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
 
-        if (reservationRepo.hasBlockingReservation(request.replacementRoomId(), reservation.getCheckOutDate(),
-                reservation.getCheckInDate(), blockingStatuses, Instant.now())) {
-            throw new RoomReassignmentException("Replacement room is not available.");
+        if (reservationRepo.hasBlockingReservationExcluding(
+                reservation.getId(),
+                request.roomId(),
+                reservation.getCheckOutDate(),
+                reservation.getCheckInDate(),
+                blockingStatuses,
+                Instant.now())) {
+            throw new RoomReassignmentException("Room is not available.");
         }
 
-        reservation.reassignRoom(request.currentRoomId(), request.replacementRoomId());
+        String previousRoomId = item.getRoomId();
+        reservation.assignRoom(itemId, request.roomId());
         auditLogRepository.save(new AuditLog(
                 actor,
-                "RESERVATION_ROOM_REASSIGNED",
+                previousRoomId == null ? "RESERVATION_ROOM_ASSIGNED" : "RESERVATION_ROOM_REASSIGNED",
                 "Reservation",
                 reservation.getId(),
-                request.currentRoomId() + " -> " + request.replacementRoomId()));
+                String.valueOf(previousRoomId) + " -> " + request.roomId()));
 
         return ReservationResponse.from(reservation);
     }
@@ -203,33 +271,8 @@ public class ReservationService {
             throw new IllegalStateException("The hotel is not accepting new bookings.");
         }
 
-        List<ReservationStatus> blockingStatuses = List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
-                ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
-        BigDecimal totalPrice = BigDecimal.ZERO;
-        for (String roomId : request.roomIds()) {
-            HotelCatalogClient.RoomDetails room = hotelCatalogClient.getRoom(roomId);
-            if (!room.active() || !"AVAILABLE".equals(room.status())) {
-                throw new IllegalStateException("Room is not available for booking: " + roomId);
-            }
-
-            if (!hotelCatalogClient.roomIsAvailable(roomId, request.checkInDate(), request.checkOutDate())) {
-                throw new IllegalStateException("Room is unavailable during the requested dates: " + roomId);
-            }
-
-            if (!room.hotelId().toString().equals(request.hotelId())) {
-                throw new IllegalArgumentException("Room does not belong to the requested hotel: " + roomId);
-            }
-
-            if (reservationRepo.hasBlockingReservation(roomId, request.checkOutDate(), request.checkInDate(),
-                    blockingStatuses, Instant.now())) {
-                throw new IllegalStateException("Room is not available: " + roomId);
-            }
-
-            totalPrice = totalPrice.add(hotelCatalogClient.quoteRoomType(
-                    room.roomTypeId(),
-                    request.checkInDate(),
-                    request.checkOutDate()));
-        }
+        BigDecimal totalPrice = validateAndQuoteRoomTypes(request.hotelId(), request.roomTypeIds(),
+                request.guestCount(), request.checkInDate(), request.checkOutDate());
 
         BookingPolicy policy = policyRepo.findByHotelId(request.hotelId()).orElse(null);
         if (request.paymentMode() == pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
@@ -248,7 +291,8 @@ public class ReservationService {
         if (customerUsername != null) {
             reservation.assignCustomer(customerUsername);
         }
-        request.roomIds().forEach(reservation::addRoom);
+        request.roomTypeIds().forEach(reservation::addRoomType);
+        autoAssignRooms(reservation, blockingStatuses());
 
         GuestAccessService.GuestAccessToken guestAccessToken = guestAccessService.createToken(
                 request.checkOutDate());
@@ -308,30 +352,15 @@ public class ReservationService {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
 
-        BigDecimal totalPrice = BigDecimal.ZERO;
-        List<ReservationStatus> blockingStatuses = List.of(ReservationStatus.PENDING,
-                ReservationStatus.HELD, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
-
-        for (String roomId : request.roomIds()) {
-            HotelCatalogClient.RoomDetails room = hotelCatalogClient.getRoom(roomId);
-            if (!room.active() || !"AVAILABLE".equals(room.status())
-                    || !hotelCatalogClient.roomIsAvailable(roomId, request.checkInDate(), request.checkOutDate())
-                    || reservationRepo.hasBlockingReservationExcluding(reservation.getId(), roomId,
-                    request.checkOutDate(),
-                    request.checkInDate(), blockingStatuses, Instant.now())) {
-                throw new IllegalStateException("Room is not available for the modified reservation: " + roomId);
-            }
-
-            totalPrice = totalPrice.add(hotelCatalogClient.quoteRoomType(room.roomTypeId(),
-                    request.checkInDate(), request.checkOutDate()));
-        }
+        BigDecimal totalPrice = validateAndQuoteRoomTypes(reservation.getHotelId(), request.roomTypeIds(),
+                request.guestCount(), request.checkInDate(), request.checkOutDate());
 
         DiscountCodeService.DiscountResult discount = discountCodeService.apply(
                 reservation.getHotelId(), request.discountCode(), totalPrice, request.checkInDate());
 
         reservation.updateDetails(request.guestName(), request.guestPhone(), request.guestEmail(),
                 request.guestCount(), request.checkInDate(), request.checkOutDate(), request.notes());
-        reservation.replaceRooms(request.roomIds());
+        reservation.replaceRoomTypes(request.roomTypeIds());
         reservation.applyPriceSnapshot(discount.total(), "EUR");
         reservation.applyDiscountSnapshot(discount.code(), discount.amount());
 
@@ -388,5 +417,112 @@ public class ReservationService {
                 reservation.getCheckOutDate(),
                 reservation.getTotalPrice(),
                 reservation.getCurrency()));
+    }
+
+    private BigDecimal validateAndQuoteRoomTypes(String hotelId, List<String> roomTypeIds,
+                                                 int guestCount, LocalDate checkInDate,
+                                                 LocalDate checkOutDate) {
+        List<ReservationStatus> blockingStatuses = blockingStatuses();
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        int totalCapacity = 0;
+        java.util.Map<String, Integer> requestedByType = new java.util.HashMap<>();
+
+        for (String roomTypeId : roomTypeIds) {
+            HotelCatalogClient.RoomTypeDetails roomType = hotelCatalogClient.getRoomType(roomTypeId);
+            if (!roomType.active() || !roomType.hotelId().toString().equals(hotelId)) {
+                throw new IllegalArgumentException("Room type does not belong to the requested hotel: " + roomTypeId);
+            }
+
+            requestedByType.merge(roomTypeId, 1, Integer::sum);
+            totalCapacity += roomType.maximumOccupancy();
+            totalPrice = totalPrice.add(hotelCatalogClient.quoteRoomType(
+                    roomType.id(), checkInDate, checkOutDate));
+        }
+
+        if (guestCount > totalCapacity) {
+            throw new IllegalArgumentException("Selected room types cannot accommodate the requested guests.");
+        }
+
+        for (var entry : requestedByType.entrySet()) {
+            if (!hasAvailableRoomTypeCapacity(hotelId, entry.getKey(), checkInDate, checkOutDate,
+                    blockingStatuses, entry.getValue())) {
+                throw new IllegalStateException("No room of the selected type is available for the requested dates.");
+            }
+        }
+
+        return totalPrice;
+    }
+
+    private void autoAssignRooms(Reservation reservation, List<ReservationStatus> blockingStatuses) {
+        java.util.Set<String> assignedRoomIds = new java.util.HashSet<>();
+
+        for (var item : reservation.getItems()) {
+            HotelCatalogClient.RoomDetails room = hotelCatalogClient.findBookableRooms(
+                            reservation.getHotelId(),
+                            item.getRoomTypeId(),
+                            reservation.getCheckInDate(),
+                            reservation.getCheckOutDate())
+                    .stream()
+                    .filter(candidate -> !assignedRoomIds.contains(candidate.id().toString()))
+                    .filter(candidate -> !reservationRepo.hasBlockingReservation(candidate.id().toString(),
+                            reservation.getCheckOutDate(), reservation.getCheckInDate(),
+                            blockingStatuses, Instant.now()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No room of the selected type is available for the requested dates."));
+
+            reservation.assignFirstUnassignedRoomOfType(item.getRoomTypeId(), room.id().toString());
+            assignedRoomIds.add(room.id().toString());
+        }
+    }
+
+    private List<ReservationStatus> blockingStatuses() {
+        return List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
+                ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
+    }
+
+    private boolean hasAvailableRoomTypeCapacity(
+            String hotelId,
+            String roomTypeId,
+            LocalDate checkInDate,
+            LocalDate checkOutDate,
+            List<ReservationStatus> blockingStatuses) {
+        return hasAvailableRoomTypeCapacity(
+                hotelId,
+                roomTypeId,
+                checkInDate,
+                checkOutDate,
+                blockingStatuses,
+                1);
+    }
+
+    private boolean hasAvailableRoomTypeCapacity(
+            String hotelId,
+            String roomTypeId,
+            LocalDate checkInDate,
+            LocalDate checkOutDate,
+            List<ReservationStatus> blockingStatuses,
+            int requestedRooms) {
+        long availablePhysicalRooms = hotelCatalogClient.findBookableRooms(
+                        hotelId,
+                        roomTypeId,
+                        checkInDate,
+                        checkOutDate)
+                .stream()
+                .filter(room -> !reservationRepo.hasBlockingReservation(
+                        room.id().toString(),
+                        checkOutDate,
+                        checkInDate,
+                        blockingStatuses,
+                        Instant.now()))
+                .count();
+        long unassignedReservations = reservationRepo.countUnassignedRoomTypeReservations(
+                roomTypeId,
+                checkOutDate,
+                checkInDate,
+                blockingStatuses,
+                Instant.now());
+
+        return availablePhysicalRooms - unassignedReservations >= requestedRooms;
     }
 }

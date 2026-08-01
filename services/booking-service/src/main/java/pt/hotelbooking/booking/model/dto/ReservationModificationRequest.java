@@ -17,6 +17,6 @@ public record ReservationModificationRequest(
         @NotNull @Future LocalDate checkInDate,
         @NotNull @Future LocalDate checkOutDate,
         String notes,
-        @NotEmpty List<@NotBlank String> roomIds,
+        @NotEmpty List<@NotBlank String> roomTypeIds,
         String discountCode) {
 }

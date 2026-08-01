@@ -13,13 +13,17 @@ public class ReservationItem extends BookingBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "reservation_id", nullable = false)
     private Reservation reservation;
+
+    private String roomTypeId;
+
     private String roomId;
 
-    public ReservationItem(Reservation reservation, String roomId) {
-        this.reservation = reservation; this.roomId = roomId;
+    public ReservationItem(Reservation reservation, String roomTypeId) {
+        this.reservation = reservation;
+        this.roomTypeId = roomTypeId;
     }
 
-    public void changeRoom(String roomId) {
+    public void assignRoom(String roomId) {
         this.roomId = roomId;
     }
 }

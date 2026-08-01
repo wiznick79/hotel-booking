@@ -30,6 +30,7 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/api/reservations",
+                        "/api/reservations/availability",
                         "/api/reservations/guest/**")
                 .permitAll()
                 .anyRequest()

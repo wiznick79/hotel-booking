@@ -13,6 +13,7 @@ import pt.hotelbooking.hotel.service.RoomService;
 import pt.hotelbooking.hotel.config.HotelScopeAuthorization;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -38,6 +39,14 @@ public class RoomController {
     @GetMapping
     public List<RoomResponse> findAll() {
         return roomService.findAll();
+    }
+
+    @GetMapping("/bookable")
+    public List<RoomResponse> findBookableRooms(@RequestParam UUID hotelId,
+                                                @RequestParam UUID roomTypeId,
+                                                @RequestParam LocalDate fromDate,
+                                                @RequestParam LocalDate toDate) {
+        return roomService.findBookableRooms(hotelId, roomTypeId, fromDate, toDate);
     }
 
     @PutMapping("/{id}")

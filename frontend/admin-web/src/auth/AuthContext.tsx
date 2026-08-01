@@ -1,25 +1,11 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { login as requestLogin, refresh as requestRefresh } from '../api/authApi';
 import { readJwtClaims } from './jwt';
-import type { JwtClaims } from './jwt';
+import { AuthContext } from './authContext';
+import type { AuthSession } from './authContext';
 
 const SESSION_STORAGE_KEY = 'hotel-booking.admin.session';
-
-export type AuthSession = {
-  accessToken: string;
-  expiresAt: number;
-  claims: JwtClaims;
-};
-
-type AuthContextValue = {
-  session: AuthSession | null;
-  login: (username: string, password: string) => Promise<void>;
-  refresh: () => Promise<void>;
-  logout: () => void;
-};
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function readStoredSession(): AuthSession | null {
   const value = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -89,5 +75,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export { AuthContext };

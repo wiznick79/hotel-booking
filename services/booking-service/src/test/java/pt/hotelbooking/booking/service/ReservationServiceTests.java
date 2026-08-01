@@ -12,6 +12,8 @@ import pt.hotelbooking.booking.repository.BookingPolicyRepository;
 import pt.hotelbooking.booking.repository.ReservationRepository;
 import pt.hotelbooking.booking.repository.AuditLogRepository;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
+import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -75,6 +77,49 @@ class ReservationServiceTests {
     }
 
     @Test
+    void returnsAvailableRoomTypesWithDateSpecificPrices() {
+        String hotelId = "00000000-0000-0000-0000-000000000001";
+        UUID roomTypeId = UUID.randomUUID();
+        LocalDate checkInDate = LocalDate.now().plusDays(10);
+        LocalDate checkOutDate = checkInDate.plusDays(2);
+
+        when(hotelCatalogClient.hotelIsActive(hotelId)).thenReturn(true);
+        when(hotelCatalogClient.findRoomTypes()).thenReturn(List.of(
+                new HotelCatalogClient.RoomTypeCatalogItem(
+                        roomTypeId,
+                        UUID.fromString(hotelId),
+                        2,
+                        java.math.BigDecimal.valueOf(80),
+                        "en",
+                        "Double room",
+                        null,
+                        true)));
+        when(hotelCatalogClient.findBookableRooms(anyString(), anyString(), any(), any())).thenReturn(List.of(
+                new HotelCatalogClient.RoomDetails(
+                        UUID.randomUUID(),
+                        UUID.fromString(hotelId),
+                        roomTypeId,
+                        "101",
+                        1,
+                        "AVAILABLE",
+                        true)));
+        when(reservationRepository.hasBlockingReservation(anyString(), any(), any(), any(), any()))
+                .thenReturn(false);
+        when(reservationRepository.countUnassignedRoomTypeReservations(anyString(), any(), any(), any(), any()))
+                .thenReturn(0L);
+        when(hotelCatalogClient.quoteRoomType(roomTypeId, checkInDate, checkOutDate))
+                .thenReturn(java.math.BigDecimal.valueOf(160));
+
+        var result = reservationService.searchAvailability(hotelId, checkInDate, checkOutDate, 2);
+
+        assertThat(result).singleElement().satisfies(roomType -> {
+            assertThat(roomType.roomTypeId()).isEqualTo(roomTypeId);
+            assertThat(roomType.name()).isEqualTo("Double room");
+            assertThat(roomType.totalPrice()).isEqualByComparingTo("160");
+        });
+    }
+
+    @Test
     void cancelsReservationBeforeCancellationDeadline() {
         UUID id = UUID.randomUUID();
         var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
@@ -113,16 +158,22 @@ class ReservationServiceTests {
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
                 List.of("room-1"), null, null);
         when(hotelCatalogClient.hotelIsActive(hotelId)).thenReturn(true);
-        when(hotelCatalogClient.roomIsAvailable(anyString(), any(), any())).thenReturn(true);
-        when(hotelCatalogClient.getRoom("room-1")).thenReturn(new HotelCatalogClient.RoomDetails(
-                null, UUID.fromString(hotelId), UUID.randomUUID(),
-                "101", 1, "AVAILABLE", true));
+        UUID roomTypeId = UUID.randomUUID();
+        when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
+                roomTypeId, UUID.fromString(hotelId), 2, true));
+        when(hotelCatalogClient.findBookableRooms(anyString(), anyString(), any(), any())).thenReturn(List.of(
+                new HotelCatalogClient.RoomDetails(UUID.randomUUID(), UUID.fromString(hotelId), roomTypeId,
+                        "101", 1, "AVAILABLE", true)));
+        when(reservationRepository.countUnassignedRoomTypeReservations(anyString(), any(), any(), any(), any()))
+                .thenReturn(0L);
+        when(hotelCatalogClient.quoteRoomType(any(), any(), any()))
+                .thenReturn(java.math.BigDecimal.valueOf(100));
         when(reservationRepository.hasBlockingReservation(
                 anyString(), any(), any(), any(), any())).thenReturn(true);
 
         assertThatThrownBy(() -> reservationService.create(request))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Room is not available: room-1");
+                .hasMessage("No room of the selected type is available for the requested dates.");
     }
 
     @Test
@@ -134,10 +185,13 @@ class ReservationServiceTests {
                 List.of("room-1"), null, null);
         UUID roomTypeId = UUID.randomUUID();
         when(hotelCatalogClient.hotelIsActive(hotelId)).thenReturn(true);
-        when(hotelCatalogClient.roomIsAvailable(anyString(), any(), any())).thenReturn(true);
-        when(hotelCatalogClient.getRoom("room-1")).thenReturn(new HotelCatalogClient.RoomDetails(
-                null, UUID.fromString(hotelId), roomTypeId,
-                "101", 1, "AVAILABLE", true));
+        when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
+                roomTypeId, UUID.fromString(hotelId), 2, true));
+        when(hotelCatalogClient.findBookableRooms(anyString(), anyString(), any(), any())).thenReturn(List.of(
+                new HotelCatalogClient.RoomDetails(UUID.randomUUID(), UUID.fromString(hotelId), roomTypeId,
+                        "101", 1, "AVAILABLE", true)));
+        when(reservationRepository.countUnassignedRoomTypeReservations(anyString(), any(), any(), any(), any()))
+                .thenReturn(0L);
         when(reservationRepository.hasBlockingReservation(
                 anyString(), any(), any(), any(), any())).thenReturn(false);
         when(hotelCatalogClient.quoteRoomType(any(), any(), any()))
@@ -172,17 +226,27 @@ class ReservationServiceTests {
         var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
                 "hotel-1", "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null);
-        reservation.addRoom("room-1");
+        reservation.addRoomType("room-type-1");
+        UUID itemId = UUID.randomUUID();
+        ReflectionTestUtils.setField(reservation.getItems().getFirst(), "id", itemId);
         when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.hasBlockingReservation(
-                anyString(), any(), any(), any(), any())).thenReturn(false);
+        when(reservationRepository.hasBlockingReservationExcluding(
+                any(), anyString(), any(), any(), any(), any())).thenReturn(false);
+        UUID hotelId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        when(hotelCatalogClient.getRoom("room-2")).thenReturn(new HotelCatalogClient.RoomDetails(
+                UUID.randomUUID(), hotelId, UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                "102", 1, "AVAILABLE", true));
+        when(hotelCatalogClient.roomIsAvailable(anyString(), any(), any())).thenReturn(true);
+        ReflectionTestUtils.setField(reservation, "hotelId", hotelId.toString());
+        ReflectionTestUtils.setField(reservation.getItems().getFirst(), "roomTypeId",
+                "00000000-0000-0000-0000-000000000001");
 
-        var result = reservationService.reassignRoom(
+        var result = reservationService.assignRoom(
                 id,
-                new pt.hotelbooking.booking.model.dto.RoomReassignmentRequest(
-                        "room-1", "room-2"));
+                itemId,
+                new RoomAssignmentRequest("room-2"));
 
-        assertThat(result.roomIds()).containsExactly("room-2");
+        assertThat(result.items()).extracting(item -> item.roomId()).containsExactly("room-2");
     }
 
     @Test
@@ -191,17 +255,27 @@ class ReservationServiceTests {
         var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
                 "hotel-1", "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null);
-        reservation.addRoom("room-1");
+        reservation.addRoomType("room-type-1");
+        UUID itemId = UUID.randomUUID();
+        ReflectionTestUtils.setField(reservation.getItems().getFirst(), "id", itemId);
         when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.hasBlockingReservation(
-                anyString(), any(), any(), any(), any())).thenReturn(true);
+        UUID hotelId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        when(hotelCatalogClient.getRoom("room-2")).thenReturn(new HotelCatalogClient.RoomDetails(
+                UUID.randomUUID(), hotelId, UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                "102", 1, "AVAILABLE", true));
+        when(hotelCatalogClient.roomIsAvailable(anyString(), any(), any())).thenReturn(true);
+        ReflectionTestUtils.setField(reservation.getItems().getFirst(), "roomTypeId",
+                "00000000-0000-0000-0000-000000000001");
+        ReflectionTestUtils.setField(reservation, "hotelId", hotelId.toString());
+        when(reservationRepository.hasBlockingReservationExcluding(
+                any(), anyString(), any(), any(), any(), any())).thenReturn(true);
 
-        assertThatThrownBy(() -> reservationService.reassignRoom(
+        assertThatThrownBy(() -> reservationService.assignRoom(
                 id,
-                new pt.hotelbooking.booking.model.dto.RoomReassignmentRequest(
-                        "room-1", "room-2")))
+                itemId,
+                new RoomAssignmentRequest("room-2")))
                 .isInstanceOf(pt.hotelbooking.booking.exception.RoomReassignmentException.class)
-                .hasMessage("Replacement room is not available.");
+                .hasMessage("Room is not available.");
     }
 
     private ReservationRequest requestWithRoom(String roomId) {

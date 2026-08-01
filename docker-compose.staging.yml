@@ -7,12 +7,21 @@ services:
       - "443:443"
     volumes:
       - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./infrastructure/caddy/site:/usr/share/caddy:ro
       - hotel-booking-caddy-data:/data
       - hotel-booking-caddy-config:/config
     depends_on:
       api-gateway:
         condition: service_healthy
+      public-web:
+        condition: service_started
+      admin-web:
+        condition: service_started
+
+  public-web:
+    ports: !reset []
+
+  admin-web:
+    ports: !reset []
 
   kafka:
     ports: !reset []

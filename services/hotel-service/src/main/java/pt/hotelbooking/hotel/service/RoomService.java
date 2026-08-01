@@ -14,7 +14,9 @@ import pt.hotelbooking.hotel.model.entity.RoomType;
 import pt.hotelbooking.hotel.repository.HotelRepository;
 import pt.hotelbooking.hotel.repository.RoomRepository;
 import pt.hotelbooking.hotel.repository.RoomTypeRepository;
+import pt.hotelbooking.hotel.repository.RoomUnavailabilityRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +27,7 @@ public class RoomService {
     private final RoomRepository roomRepo;
     private final HotelRepository hotelRepo;
     private final RoomTypeRepository roomTypeRepo;
+    private final RoomUnavailabilityRepository unavailabilityRepo;
 
     @Transactional(readOnly = true)
     public RoomResponse findById(UUID id) {
@@ -46,6 +49,21 @@ public class RoomService {
     @Transactional(readOnly = true)
     public List<RoomResponse> findAll() {
         return roomRepo.findAll().stream().map(RoomResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RoomResponse> findBookableRooms(UUID hotelId, UUID roomTypeId,
+                                                LocalDate fromDate, LocalDate toDate) {
+        if (!toDate.isAfter(fromDate)) {
+            throw new IllegalArgumentException("The end date must be after the start date.");
+        }
+
+        return roomRepo.findByHotelIdAndRoomTypeIdAndActiveTrueAndErasedFalse(hotelId, roomTypeId)
+                .stream()
+                .filter(room -> room.getStatus().name().equals("AVAILABLE"))
+                .filter(room -> !unavailabilityRepo.overlaps(room.getId(), fromDate, toDate))
+                .map(RoomResponse::from)
+                .toList();
     }
 
     @Transactional

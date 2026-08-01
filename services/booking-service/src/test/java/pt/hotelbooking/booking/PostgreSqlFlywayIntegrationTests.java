@@ -75,8 +75,10 @@ class PostgreSqlFlywayIntegrationTests {
                 LocalDate.of(2026, 8, 15),
                 null);
 
-        reservation.addRoom("room-1");
+        reservation.addRoomType("room-type-1");
         reservationRepository.saveAndFlush(reservation);
+        reservation.getItems().getFirst().assignRoom("room-1");
+        reservationRepository.flush();
 
         boolean blocking = reservationRepository.hasBlockingReservation(
                 "room-1",

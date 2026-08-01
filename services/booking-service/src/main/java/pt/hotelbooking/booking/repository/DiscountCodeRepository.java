@@ -9,7 +9,9 @@ import java.util.UUID;
 
 public interface DiscountCodeRepository extends JpaRepository<DiscountCode, UUID> {
 
+    Optional<DiscountCode> findByHotelIdAndCodeIgnoreCaseAndErasedFalse(String hotelId, String code);
+
     Optional<DiscountCode> findByHotelIdAndCodeIgnoreCase(String hotelId, String code);
 
-    List<DiscountCode> findByHotelIdOrderByCodeAsc(String hotelId);
+    List<DiscountCode> findByHotelIdAndErasedFalseOrderByCodeAsc(String hotelId);
 }

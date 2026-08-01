@@ -65,7 +65,9 @@ class ReservationRepositoryIntegrationTests {
                 checkOutDate,
                 null);
 
-        reservation.addRoom(roomId);
+        reservation.addRoomType("room-type-1");
+        reservationRepository.saveAndFlush(reservation);
+        reservation.getItems().getFirst().assignRoom(roomId);
         return reservation;
     }
 }

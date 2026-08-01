@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { CreateRoomTypeRequest, RoomType } from '../api/roomApi';
-import { createRoomType, findRoomTypes, updateRoomType } from '../api/roomApi';
+import { createRoomType, deactivateRoomType, findRoomTypes, updateRoomType } from '../api/roomApi';
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
+import { StatusBadge } from '../components/StatusBadge';
 
 const languages = [
   { code: 'en', label: 'English' },
@@ -103,6 +104,20 @@ export function RoomTypesPage({ hotelId }: { hotelId: string }) {
     }));
   }
 
+  async function deleteRoomType(roomType: RoomType) {
+    if (!session || !window.confirm(`Delete ${roomType.name}? It will disappear from normal management screens. Active rooms must be reassigned or deactivated first.`)) {
+      return;
+    }
+    try {
+      await deactivateRoomType(session.accessToken, roomType.id);
+      await loadRoomTypes();
+    } catch (exception) {
+      setError(exception instanceof ApiError
+        ? 'The room type could not be deleted. It may still have active rooms.'
+        : 'The room type could not be deleted. Please try again.');
+    }
+  }
+
   return (
     <section>
       <div className="page-heading">
@@ -125,8 +140,8 @@ export function RoomTypesPage({ hotelId }: { hotelId: string }) {
       {roomTypes.length > 0 && (
         <div className="table-container">
           <table>
-            <thead><tr><th>Name</th><th>Language</th><th>Maximum guests</th><th>Base price</th><th>Active</th><th /></tr></thead>
-            <tbody>{roomTypes.map((roomType) => <tr key={roomType.id}><td><strong>{roomType.name}</strong><span className="table-subtext">{roomType.description}</span></td><td>{roomType.language.toUpperCase()}</td><td>{roomType.maximumOccupancy}</td><td>{formatPrice(roomType.basePrice)}</td><td>{roomType.active ? 'Yes' : 'No'}</td><td><button type="button" className="secondary-button" onClick={() => { setEditingRoomTypeId(roomType.id); setMaximumOccupancy(roomType.maximumOccupancy); setBasePrice(String(roomType.basePrice)); setTranslations({ ...emptyTranslations(), [roomType.language]: { name: roomType.name, description: roomType.description ?? '' } }); setIsFormOpen(true); }}>Edit</button></td></tr>)}</tbody>
+            <thead><tr><th>Name</th><th>Language</th><th>Maximum guests</th><th>Base price</th><th>Status</th><th /></tr></thead>
+            <tbody>{roomTypes.map((roomType) => <tr key={roomType.id}><td><strong>{roomType.name}</strong><span className="table-subtext">{roomType.description}</span></td><td>{roomType.language.toUpperCase()}</td><td>{roomType.maximumOccupancy}</td><td>{formatPrice(roomType.basePrice)}</td><td><StatusBadge label={roomType.active ? 'Active' : 'Inactive'} tone={roomType.active ? 'positive' : 'negative'} /></td><td><button type="button" className="secondary-button" onClick={() => { setEditingRoomTypeId(roomType.id); setMaximumOccupancy(roomType.maximumOccupancy); setBasePrice(String(roomType.basePrice)); setTranslations({ ...emptyTranslations(), [roomType.language]: { name: roomType.name, description: roomType.description ?? '' } }); setIsFormOpen(true); }}>Edit</button> <button type="button" className="secondary-button" onClick={() => void deleteRoomType(roomType)}>Delete</button></td></tr>)}</tbody>
           </table>
         </div>
       )}
@@ -138,7 +153,7 @@ export function RoomTypesPage({ hotelId }: { hotelId: string }) {
             <label>Maximum occupancy<input type="number" min="1" value={maximumOccupancy} onChange={(event) => setMaximumOccupancy(Number(event.target.value))} required /></label>
             <label>Base price per night (€)<input type="number" min="0" step="0.01" value={basePrice} onChange={(event) => setBasePrice(event.target.value)} required /></label>
             {languages.map(({ code, label }) => <fieldset className="translation-fieldset full-width" key={code}><legend>{label}</legend><label>Name<input value={translations[code].name} onChange={(event) => updateTranslation(code, 'name', event.target.value)} /></label><label>Description<textarea rows={2} value={translations[code].description} onChange={(event) => updateTranslation(code, 'description', event.target.value)} /></label></fieldset>)}
-            <div className="form-actions full-width"><button type="button" className="secondary-button" onClick={() => setIsFormOpen(false)}>Cancel</button><button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create room type'}</button></div>
+            <div className="form-actions full-width"><button type="button" className="secondary-button" onClick={() => setIsFormOpen(false)}>Cancel</button><button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : editingRoomTypeId ? 'Save room type' : 'Create room type'}</button></div>
           </form>
         </section>
       )}

@@ -39,6 +39,12 @@ public class RoomTypeController {
         return roomTypeService.findAll(languageResolver.resolve(null, acceptLanguage));
     }
 
+    @GetMapping("/{id}")
+    public RoomTypeResponse findById(@PathVariable UUID id,
+                                     @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
+        return roomTypeService.findById(id, languageResolver.resolve(null, acceptLanguage));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
     public RoomTypeResponse update(@PathVariable UUID id, @Valid @RequestBody RoomTypeRequest request,
@@ -51,8 +57,8 @@ public class RoomTypeController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROOM_TYPE_MANAGE')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivate(@PathVariable UUID id, Authentication authentication) {
+    public void delete(@PathVariable UUID id, Authentication authentication) {
         HotelScopeAuthorization.requireAccess(authentication, roomTypeService.findHotelId(id));
-        roomTypeService.deactivate(id);
+        roomTypeService.erase(id);
     }
 }

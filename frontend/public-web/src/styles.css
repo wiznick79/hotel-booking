@@ -1,0 +1,192 @@
+:root {
+  color: #19262f;
+  background: #faf9f6;
+  font-family: Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: #b19867;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 5%;
+  background: #fff;
+}
+
+.hotel-title {
+  padding: 0;
+  background: transparent;
+  color: #19262f;
+  font-family: Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 2rem;
+}
+
+.hero-photo {
+  display: flex;
+  align-items: center;
+  min-height: 480px;
+  padding: 4rem;
+  background-position: center;
+  background-size: cover;
+  color: #fff;
+}
+
+.hero-photo div {
+  max-width: 500px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: Georgia, serif;
+}
+
+h1 {
+  font-size: 4rem;
+}
+
+.eyebrow {
+  color: #c8a66a;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.section {
+  margin-top: 4rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+article,
+.booking-card {
+  border: 1px solid #e6e1d8;
+  background: #fff;
+  padding: 1.5rem;
+}
+
+.booking-confirmation {
+  max-width: 680px;
+  margin: 4rem auto;
+  border: 1px solid #e6e1d8;
+  background: #fff;
+  padding: 3rem;
+}
+
+.booking-card {
+  display: grid;
+  max-width: 680px;
+  margin: 2rem auto;
+  gap: 1rem;
+}
+
+.booking-card label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: bold;
+}
+
+.booking-intro {
+  margin: 0;
+  color: #53626c;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #bdc8cd;
+  border-radius: 3px;
+  padding: 0.7rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.link {
+  justify-self: start;
+  padding: 0;
+  background: transparent;
+  color: #876d3c;
+}
+
+.optional {
+  color: #64727a;
+  font-weight: normal;
+}
+
+.error {
+  color: #b42318;
+}
+
+.success {
+  color: #087443;
+}
+
+.availability-summary {
+  margin: 0;
+  padding: .85rem 1rem;
+  background: #f4f0e7;
+  border-left: 3px solid #b19867;
+  color: #384850;
+}
+
+@media (max-width: 700px) {
+  .cards,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-photo {
+    min-height: 360px;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 2.8rem;
+  }
+}

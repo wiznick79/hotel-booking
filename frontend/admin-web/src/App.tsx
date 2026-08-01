@@ -47,7 +47,7 @@ function App() {
   }
 
   const pages: Record<string, ReactNode> = {
-    '/': <DashboardPage hasAssignedHotel={Boolean(selectedHotelId)} />,
+    '/': <DashboardPage hotelId={selectedHotelId} />,
     '/reservations': <ReservationsPage hotelId={selectedHotelId} />,
     '/rooms': <RoomsPage hotelId={selectedHotelId} />,
     '/room-types': <RoomTypesPage hotelId={selectedHotelId} />,
@@ -63,7 +63,7 @@ function App() {
       onHotelChange={setSelectedHotelId}
       hotels={hotels}
     >
-      {pages[path] ?? <DashboardPage hasAssignedHotel={Boolean(selectedHotelId)} />}
+      {pages[path] ?? <DashboardPage hotelId={selectedHotelId} />}
     </AppLayout>
   );
 }

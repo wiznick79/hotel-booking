@@ -1,0 +1,12 @@
+.git
+.idea
+.env
+.env.*
+**/node_modules
+**/dist
+**/target
+**/.vite
+**/*.tsbuildinfo
+infrastructure/.data
+infrastructure/aws/terraform/.terraform
+infrastructure/aws/terraform/*.tfstate*
