@@ -6,7 +6,7 @@ COPY . .
 
 RUN chmod +x mvnw && ./mvnw -pl services/api-gateway -am package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 
