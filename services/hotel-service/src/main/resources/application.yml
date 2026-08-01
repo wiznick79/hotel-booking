@@ -24,7 +24,7 @@ hotel:
     default-language: en
 
 jwt:
-  secret: ${JWT_SECRET}
+  public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
 
 server:
   port: 8081

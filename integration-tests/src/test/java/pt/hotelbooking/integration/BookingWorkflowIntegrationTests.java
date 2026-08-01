@@ -14,12 +14,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -42,7 +36,9 @@ import pt.hotelbooking.notification.NotificationServiceApplication;
 import pt.hotelbooking.notification.repository.NotificationRepository;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,9 +46,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.crypto.spec.SecretKeySpec;
-
-import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 
 import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,7 +62,7 @@ class BookingWorkflowIntegrationTests {
 
     private static final String RESERVATION_EVENTS_DLT = RESERVATION_EVENTS_TOPIC + ".DLT";
 
-    private static final String JWT_SECRET = "integration-secret-that-is-long-enough-for-hmac-sha256";
+    private static final KeyPair JWT_KEY_PAIR = createKeyPair();
 
     @Container
     private static final KafkaContainer KAFKA = new KafkaContainer(
@@ -198,8 +196,10 @@ class BookingWorkflowIntegrationTests {
                 Map.entry("spring.jpa.hibernate.ddl-auto", "create-drop"),
                 Map.entry("spring.flyway.enabled", "false"),
                 Map.entry("spring.main.banner-mode", "off"),
-                Map.entry("jwt.secret", JWT_SECRET),
-                Map.entry("JWT_SECRET", JWT_SECRET)));
+                Map.entry(
+                        "jwt.public-key-base64",
+                        java.util.Base64.getEncoder().encodeToString(
+                                JWT_KEY_PAIR.getPublic().getEncoded()))));
     }
 
     private long totalRecordsInTopic(String topic) {
@@ -264,22 +264,33 @@ class BookingWorkflowIntegrationTests {
     }
 
     private String bearerToken(List<String> permissions, List<UUID> hotelIds) {
-        SecretKeySpec key = new SecretKeySpec(
-                JWT_SECRET.getBytes(StandardCharsets.UTF_8),
-                "HmacSHA256");
-        JwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
         Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject("integration-test")
-                .issuedAt(now)
-                .expiresAt(now.plus(Duration.ofMinutes(5)))
+                .issueTime(java.util.Date.from(now))
+                .expirationTime(java.util.Date.from(now.plus(Duration.ofMinutes(5))))
                 .claim("permissions", permissions)
                 .claim("hotelIds", hotelIds.stream().map(UUID::toString).toList())
                 .build();
 
-        String token = encoder.encode(JwtEncoderParameters.from(
-                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
-        return "Bearer " + token;
+        SignedJWT token = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claims);
+
+        try {
+            token.sign(new RSASSASigner((RSAPrivateKey) JWT_KEY_PAIR.getPrivate()));
+            return "Bearer " + token.serialize();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not sign the integration test JWT.", exception);
+        }
+    }
+
+    private static KeyPair createKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not generate the integration test RSA key pair.", exception);
+        }
     }
 
     private int portOf(ConfigurableApplicationContext context) {

@@ -10,6 +10,11 @@
     <artifactId>identity-service</artifactId>
     <dependencies>
         <dependency>
+            <groupId>pt.hotelbooking</groupId>
+            <artifactId>security-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>

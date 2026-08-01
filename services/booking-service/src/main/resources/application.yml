@@ -48,7 +48,7 @@ booking-events:
   topic: reservation-events
 
 jwt:
-  secret: ${JWT_SECRET}
+  public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
 
 management:
   metrics:

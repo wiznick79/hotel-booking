@@ -132,7 +132,7 @@ services:
       dockerfile: services/hotel-service/Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: postgres
-      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-me}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?JWT_PUBLIC_KEY_BASE64 must be set}
       HOTEL_DB_URL: jdbc:postgresql://postgres:5432/hotel_service
       HOTEL_DB_USERNAME: hotel_booking
       HOTEL_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
@@ -152,7 +152,7 @@ services:
       dockerfile: services/booking-service/Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: postgres
-      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-me}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?JWT_PUBLIC_KEY_BASE64 must be set}
       BOOKING_DB_URL: jdbc:postgresql://postgres:5432/booking_service
       BOOKING_DB_USERNAME: hotel_booking
       BOOKING_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
@@ -178,7 +178,8 @@ services:
       dockerfile: services/identity-service/Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: postgres,dev
-      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-me}
+      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?JWT_PRIVATE_KEY_BASE64 must be set}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?JWT_PUBLIC_KEY_BASE64 must be set}
       IDENTITY_DB_URL: jdbc:postgresql://postgres:5432/identity_service
       IDENTITY_DB_USERNAME: hotel_booking
       IDENTITY_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
@@ -199,7 +200,7 @@ services:
       NOTIFICATION_DB_URL: jdbc:postgresql://postgres:5432/notification_service
       NOTIFICATION_DB_USERNAME: hotel_booking
       NOTIFICATION_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
-      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-me}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?JWT_PUBLIC_KEY_BASE64 must be set}
       GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MAIL_HOST: mailpit

@@ -39,3 +39,11 @@ export function updateUserEnabled(accessToken: string, userId: number, enabled: 
 export function resetUserPassword(accessToken: string, userId: number, password: string) {
   return patch<void>(`/users/${userId}/password`, { password }, accessToken);
 }
+
+export function changeOwnPassword(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  return patch<void>('/users/me/password', { currentPassword, newPassword }, accessToken);
+}

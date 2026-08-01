@@ -80,10 +80,12 @@ main:not(.login-page) { margin: 0 auto; max-width: 75rem; padding: 2.5rem 2rem; 
 .danger-button { background: #9b2921; margin-right: auto; }
 .assignment-line { align-items: center; display: flex; gap: .25rem; justify-content: space-between; }
 .assignment-form { display: grid; gap: 1rem; margin-top: 1.5rem; max-width: 38rem; }
+.narrow-card { max-width: 38rem; }
 .assignment-form h2, .assignment-form p { margin: 0; }
 .assignment-form p { color: #61707c; }
 .assignment-form label { display: grid; font-size: .85rem; font-weight: 650; gap: .4rem; }
 .assignment-form select { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; padding: .65rem; }
+.assignment-form input { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; padding: .65rem; }
 .reservation-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 table { border-collapse: collapse; min-width: 44rem; width: 100%; }
 th, td { border-bottom: 1px solid #edf0f2; padding: 1rem; text-align: left; }

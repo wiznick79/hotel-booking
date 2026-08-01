@@ -75,6 +75,7 @@ export function AppLayout({ children, selectedHotelId, onHotelChange, hotels }: 
 
           <div className="user-menu">
             <span>{session?.claims.sub}</span>
+            <a className="text-button" href="#/change-password">Change password</a>
             <button type="button" className="text-button" onClick={handleLogout}>Log out</button>
           </div>
         </header>

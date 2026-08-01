@@ -14,7 +14,6 @@ import pt.hotelbooking.identity.auth.repository.IdentityUserRepository;
 
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Configuration
 @Profile("postgres")
@@ -39,7 +38,6 @@ public class ProductionIdentityBootstrap {
                 administrator.setUsername(properties.username());
                 administrator.setPassword(passwordEncoder.encode(properties.password()));
                 administrator.setRoles(Set.of(adminRole));
-                administrator.setHotelIds(Set.of(UUID.fromString(properties.hotelId())));
                 userRepository.save(administrator);
             }
         };

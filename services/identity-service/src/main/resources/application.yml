@@ -41,4 +41,5 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId:-}] %logger{36} - %msg%n"
 
 jwt:
-  secret: ${JWT_SECRET}
+  private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
+  public-key-base64: ${JWT_PUBLIC_KEY_BASE64}

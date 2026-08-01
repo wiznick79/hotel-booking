@@ -91,13 +91,23 @@ The base `docker-compose.yml` remains a local-development setup. The host uses `
 The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted Systems Manager Parameter Store values and writes a root-only runtime environment file outside the deployed Git checkout:
 
 - `/hotel-booking/staging/postgres-password`;
-- `/hotel-booking/staging/jwt-secret`;
+- `/hotel-booking/staging/jwt-private-key-base64`;
+- `/hotel-booking/staging/jwt-public-key-base64`;
 - `/hotel-booking/staging/guest-access-encryption-secret`;
+- `/hotel-booking/staging/identity-bootstrap-username`;
+- `/hotel-booking/staging/identity-bootstrap-password`;
 - `/hotel-booking/staging/grafana-admin-password`;
 - `/hotel-booking/staging/cors-allowed-origins`;
 - `/hotel-booking/staging/notification-email-from`.
 
 Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.
+
+The staging identity service runs with the `postgres` profile only. On an empty identity database,
+the two `identity-bootstrap-*` parameters create the first administrator without hotel assignments.
+That administrator can then create the first hotel through the setup flow, which assigns it to their
+account. Once the user exists, the password parameter is not used to overwrite it. Never enable the
+`dev` profile in staging or production: it can seed the predictable development account `admin` /
+`change-me`.
 
 ## Public HTTPS endpoint
 

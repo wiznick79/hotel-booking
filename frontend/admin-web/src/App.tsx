@@ -13,6 +13,7 @@ import { RatesPage } from './pages/RatesPage';
 import { DiscountCodesPage } from './pages/DiscountCodesPage';
 import { HotelSettingsPage } from './pages/HotelSettingsPage';
 import { UsersPage } from './pages/UsersPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 
 function App() {
   const { session } = useAuth();
@@ -55,6 +56,7 @@ function App() {
     '/discount-codes': <DiscountCodesPage hotelId={selectedHotelId} />,
     '/hotel-settings': <HotelSettingsPage hotelId={selectedHotelId} />,
     '/users': <UsersPage selectedHotelId={selectedHotelId} />,
+    '/change-password': <ChangePasswordPage />,
   };
 
   return (
