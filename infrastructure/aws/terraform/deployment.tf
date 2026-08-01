@@ -38,6 +38,33 @@ resource "aws_s3_bucket_versioning" "deployment_artifacts" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "deployment_artifacts" {
+  bucket = aws_s3_bucket.deployment_artifacts.id
+
+  rule {
+    id     = "expire-staging-postgresql-backups"
+    status = "Enabled"
+
+    filter {
+      prefix = "backups/"
+    }
+
+    expiration {
+      days = 14
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+  }
+}
+
+resource "aws_ssm_parameter" "staging_backup_bucket_name" {
+  name  = "/${var.project_name}/${var.environment}/backup-bucket-name"
+  type  = "String"
+  value = aws_s3_bucket.deployment_artifacts.id
+}
+
 data "aws_iam_policy_document" "staging_host_artifact_read" {
   statement {
     effect = "Allow"
@@ -53,6 +80,17 @@ data "aws_iam_policy_document" "staging_host_artifact_read" {
     actions = ["s3:GetObject"]
 
     resources = ["${aws_s3_bucket.deployment_artifacts.arn}/releases/*"]
+  }
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:AbortMultipartUpload",
+      "s3:PutObject"
+    ]
+
+    resources = ["${aws_s3_bucket.deployment_artifacts.arn}/backups/*"]
   }
 
   statement {

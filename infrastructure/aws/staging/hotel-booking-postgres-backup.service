@@ -1,0 +1,8 @@
+[Unit]
+Description=Create and upload the hotel-booking PostgreSQL backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/hotel-booking/current/infrastructure/aws/staging/backup-postgres.sh
