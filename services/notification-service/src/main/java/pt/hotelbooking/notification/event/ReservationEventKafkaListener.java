@@ -3,6 +3,7 @@ package pt.hotelbooking.notification.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,10 @@ import pt.hotelbooking.notification.service.NotificationProcessor;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(
+        name = "notification.kafka.listener.enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 public class ReservationEventKafkaListener {
 
     private final ObjectMapper objectMapper;
