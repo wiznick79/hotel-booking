@@ -66,3 +66,13 @@ compose build public-web
 compose up --detach --remove-orphans
 
 compose up --detach --force-recreate caddy
+
+install -m 0644 \
+  "$application_directory/infrastructure/aws/staging/hotel-booking-postgres-backup.service" \
+  /etc/systemd/system/hotel-booking-postgres-backup.service
+install -m 0644 \
+  "$application_directory/infrastructure/aws/staging/hotel-booking-postgres-backup.timer" \
+  /etc/systemd/system/hotel-booking-postgres-backup.timer
+
+systemctl daemon-reload
+systemctl enable --now hotel-booking-postgres-backup.timer

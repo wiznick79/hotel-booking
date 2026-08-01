@@ -11,11 +11,20 @@ The Terraform configuration currently creates:
 - one security group that allows HTTP and HTTPS, but intentionally **not SSH**.
 - one Amazon Linux 2023 EC2 host with an encrypted volume and IMDSv2 required;
 - one Elastic IP address for stable staging DNS;
-- one minimal EC2 role that permits AWS Systems Manager Session Manager access.
+- one minimal EC2 role that permits AWS Systems Manager Session Manager access;
+- a private, encrypted S3 backup prefix with a 14-day retention policy.
 
 On its first boot, the host installs Docker, Git, and a checksum-verified Docker Compose plugin, enables the SSM agent, and creates `/opt/hotel-booking`. It deliberately does **not** clone or start the Compose stack: this repository is private, and a GitHub token must never be embedded in EC2 user data or Terraform state. A later CI/CD step will authenticate to AWS with GitHub OpenID Connect and deliver a built application artifact.
 
 The host uses AWS Systems Manager Session Manager for administration instead of exposing port 22. Its Elastic IP makes the public endpoint stable for DNS, while only HTTP and HTTPS are permitted through the security group. Terraform ignores later `user_data` changes for this learning host because cloud-init executes only on its first boot; a production design would use an immutable image or launch-template rollout instead.
+
+## PostgreSQL backups
+
+The staging deployment configures a systemd timer that backs up all four PostgreSQL
+service databases each day at 02:30 UTC. The host can write only to the `backups/`
+prefix of the existing private deployment bucket. Backup archives use S3 server-side
+encryption and expire after 14 days. See `docs/operations/postgresql-backups.md` for
+manual backup, restore, and teardown instructions.
 
 ## Prerequisites
 

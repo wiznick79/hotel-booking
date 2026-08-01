@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the hotel-booking PostgreSQL backup every day
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
