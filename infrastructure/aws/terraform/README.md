@@ -13,6 +13,7 @@ The Terraform configuration currently creates:
 - one Elastic IP address for stable staging DNS;
 - one minimal EC2 role that permits AWS Systems Manager Session Manager access;
 - a private, encrypted S3 backup prefix with a 14-day retention policy.
+- an Amazon SES domain identity for `wiznick.net`, with Easy DKIM DNS records exposed as a Terraform output.
 
 On its first boot, the host installs Docker, Git, and a checksum-verified Docker Compose plugin, enables the SSM agent, and creates `/opt/hotel-booking`. It deliberately does **not** clone or start the Compose stack: this repository is private, and a GitHub token must never be embedded in EC2 user data or Terraform state. A later CI/CD step will authenticate to AWS with GitHub OpenID Connect and deliver a built application artifact.
 
@@ -125,6 +126,21 @@ See `docs/operations/email-delivery.md` for the Amazon SES SMTP configuration an
 domain-verification process.
 
 Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.
+
+## SES domain verification
+
+Terraform creates the SES identity, but it cannot change DNS because `wiznick.net`
+is managed at Porkbun. After applying the SES identity, retrieve the three Easy DKIM
+CNAME records:
+
+```powershell
+terraform output ses_dkim_dns_records
+```
+
+Create each CNAME record at Porkbun exactly as shown. When Amazon SES reports the
+identity as verified, any address at the domain, such as `morgadinha@wiznick.net`,
+can be used as a hotel-specific sender. The identity still starts in the SES sandbox,
+so guest recipients must also be verified until production access is approved.
 
 The staging identity service runs with the `postgres` profile only. On an empty identity database,
 the two `identity-bootstrap-*` parameters create the first administrator without hotel assignments.
