@@ -32,3 +32,16 @@ output "github_deploy_role_arn" {
   description = "OIDC role assumed by the repository's main-branch GitHub Actions deployment workflow."
   value       = aws_iam_role.github_deploy.arn
 }
+
+output "ses_sending_domain" {
+  description = "SES domain identity used for hotel guest emails."
+  value       = aws_sesv2_email_identity.sending_domain.email_identity
+}
+
+output "ses_dkim_dns_records" {
+  description = "Easy DKIM CNAME records to add at the DNS provider before sending email."
+  value = {
+    for token in aws_sesv2_email_identity.sending_domain.dkim_signing_attributes[0].tokens :
+    "${token}._domainkey.${var.ses_sending_domain}" => "${token}.dkim.amazonses.com"
+  }
+}

@@ -11,6 +11,12 @@ Use Amazon SES in the same `eu-west-3` Region as the staging host. Verify the
 `wiznick.net` domain as an SES identity and enable DKIM. SES will provide DNS records;
 add those records at the domain's DNS provider before configuring the application.
 
+The staging Terraform configuration creates this identity and exposes the Easy DKIM
+CNAME records as the `ses_dkim_dns_records` output. It deliberately does not manage
+Porkbun DNS. Add the three output records there, wait for SES to show the identity as
+verified, and then configure an address such as `morgadinha@wiznick.net` in the hotel
+settings page. The display name and reply-to address can be configured independently.
+
 New SES accounts begin in the SES sandbox. While in that sandbox, both the sender and
 every recipient must be verified. This is enough to test the booking-confirmation flow
 with your own email address. Request production access only when the hotel is ready to

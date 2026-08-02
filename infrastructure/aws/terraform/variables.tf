@@ -45,3 +45,9 @@ variable "ec2_root_volume_size_gib" {
   type        = number
   default     = 30
 }
+
+variable "ses_sending_domain" {
+  description = "Domain verified with Amazon SES for hotel guest emails."
+  type        = string
+  default     = "wiznick.net"
+}
