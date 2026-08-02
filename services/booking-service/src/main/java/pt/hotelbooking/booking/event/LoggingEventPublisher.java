@@ -57,7 +57,8 @@ public class LoggingEventPublisher implements EventPublisher {
                 event.encryptedGuestAccessToken() == null ? null
                         : guestAccessTokenCipher.encrypt(event.encryptedGuestAccessToken()),
                 event.hotelId(), event.checkInDate(), event.checkOutDate(),
-                event.totalPrice(), event.currency());
+                event.totalPrice(), event.currency(), event.hotelName(), event.notificationDisplayName(),
+                event.notificationFromAddress(), event.notificationReplyToAddress());
         publishEvent("ReservationCreated", event.reservationId(), securedEvent);
     }
 

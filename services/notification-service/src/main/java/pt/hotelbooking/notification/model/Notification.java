@@ -33,6 +33,12 @@ public class Notification {
 
     private String subject;
 
+    private String senderDisplayName;
+
+    private String senderFromAddress;
+
+    private String senderReplyToAddress;
+
     @Column(columnDefinition = "text")
     private String body;
 
@@ -46,12 +52,20 @@ public class Notification {
     @Column(columnDefinition = "text")
     private String lastError;
 
-    public Notification(UUID reservationId, String hotelId, String recipient, String subject, String body) {
+    public Notification(UUID reservationId, String hotelId, String recipient, String subject, String body,
+                        String senderDisplayName, String senderFromAddress, String senderReplyToAddress) {
         this.reservationId = reservationId;
         this.hotelId = hotelId;
         this.recipient = recipient;
         this.subject = subject;
         this.body = body;
+        this.senderDisplayName = senderDisplayName;
+        this.senderFromAddress = senderFromAddress;
+        this.senderReplyToAddress = senderReplyToAddress;
+    }
+
+    public Notification(UUID reservationId, String hotelId, String recipient, String subject, String body) {
+        this(reservationId, hotelId, recipient, subject, body, null, null, null);
     }
 
     public void markSent() {

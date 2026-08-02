@@ -33,20 +33,24 @@ public class NotificationProcessor {
     public void processReservationCreated(ReservationCreatedEvent event) {
         process(event.reservationId(), event.hotelId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
-                "ReservationCreated", event.encryptedGuestAccessToken());
+                "ReservationCreated", event.encryptedGuestAccessToken(), event.hotelName(),
+                event.notificationDisplayName(), event.notificationFromAddress(),
+                event.notificationReplyToAddress());
     }
 
     @Transactional
     public void processReservationEvent(ReservationNotificationEvent event) {
         process(event.reservationId(), event.hotelId(), event.guestEmail(), event.guestName(),
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
-                event.eventType(), null);
+                event.eventType(), null, event.hotelName(), event.notificationDisplayName(),
+                event.notificationFromAddress(), event.notificationReplyToAddress());
     }
 
     private void process(java.util.UUID reservationId, String hotelId, String guestEmail, String guestName,
                          java.time.LocalDate checkInDate, java.time.LocalDate checkOutDate,
                          java.math.BigDecimal totalPrice, String currency, String eventType,
-                         String encryptedGuestAccessToken) {
+                         String encryptedGuestAccessToken, String hotelName, String senderDisplayName,
+                         String senderFromAddress, String senderReplyToAddress) {
         if (guestEmail == null || guestEmail.isBlank()) {
             return;
         }
@@ -59,15 +63,17 @@ public class NotificationProcessor {
         String accessLink = encryptedGuestAccessToken == null ? ""
                 : " Guest access link: " + publicFrontendBaseUrl + "/reservations/guest/"
                 + guestAccessTokenCipher.decrypt(encryptedGuestAccessToken);
+        String hotelNameForMessage = hotelName == null || hotelName.isBlank() ? "the hotel" : hotelName;
 
         notificationRepository.save(new Notification(
                 reservationId,
                 hotelId,
                 guestEmail,
                 subject,
-                "Hello " + guestName + ", your reservation event is: " + eventType
+                "Hello " + guestName + ", your reservation at " + hotelNameForMessage + " is: " + eventType
                         + ". Stay: " + checkInDate + " to " + checkOutDate
-                        + ". Total: " + totalPrice + " " + currency + "." + accessLink));
+                        + ". Total: " + totalPrice + " " + currency + "." + accessLink,
+                senderDisplayName, senderFromAddress, senderReplyToAddress));
     }
 
     private String subjectFor(String eventType) {

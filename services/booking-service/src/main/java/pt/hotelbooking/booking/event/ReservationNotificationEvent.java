@@ -13,5 +13,16 @@ public record ReservationNotificationEvent(
         LocalDate checkInDate,
         LocalDate checkOutDate,
         BigDecimal totalPrice,
-        String currency) {
+        String currency,
+        String hotelName,
+        String notificationDisplayName,
+        String notificationFromAddress,
+        String notificationReplyToAddress) {
+
+    public ReservationNotificationEvent(String eventType, UUID reservationId, String hotelId,
+                                        String guestEmail, String guestName, LocalDate checkInDate,
+                                        LocalDate checkOutDate, BigDecimal totalPrice, String currency) {
+        this(eventType, reservationId, hotelId, guestEmail, guestName, checkInDate, checkOutDate,
+                totalPrice, currency, null, null, null, null);
+    }
 }

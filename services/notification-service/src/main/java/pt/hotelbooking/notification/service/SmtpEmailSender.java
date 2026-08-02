@@ -19,11 +19,29 @@ public class SmtpEmailSender implements EmailSender {
     @Override
     public void send(Notification notification) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress);
+        message.setFrom(formatFromAddress(notification));
+        if (notification.getSenderReplyToAddress() != null
+                && !notification.getSenderReplyToAddress().isBlank()) {
+            message.setReplyTo(notification.getSenderReplyToAddress());
+        }
         message.setTo(notification.getRecipient());
         message.setSubject(notification.getSubject());
         message.setText(notification.getBody());
 
         mailSender.send(message);
+    }
+
+    private String formatFromAddress(Notification notification) {
+        String senderAddress = notification.getSenderFromAddress() == null
+                || notification.getSenderFromAddress().isBlank()
+                ? fromAddress
+                : notification.getSenderFromAddress();
+        String displayName = notification.getSenderDisplayName();
+
+        if (displayName == null || displayName.isBlank()) {
+            return senderAddress;
+        }
+
+        return displayName + " <" + senderAddress + ">";
     }
 }

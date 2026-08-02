@@ -7,6 +7,9 @@ export type CreateHotelRequest = {
   city: string;
   country: string;
   defaultLanguage: string;
+  notificationDisplayName?: string;
+  notificationFromAddress?: string;
+  notificationReplyToAddress?: string;
 };
 
 export type Hotel = CreateHotelRequest & {

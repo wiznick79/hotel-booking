@@ -19,24 +19,40 @@ public class Hotel extends BaseEntity {
     private String country;
 
     private String defaultLanguage;
+    private String notificationDisplayName;
+    private String notificationFromAddress;
+    private String notificationReplyToAddress;
+
+    public Hotel(String name, String description, String address, String city, String country,
+                 String defaultLanguage, String notificationDisplayName,
+                 String notificationFromAddress, String notificationReplyToAddress) {
+        this.name = name;
+        this.description = description;
+        this.address = address;
+        this.city = city;
+        this.country = country;
+        this.defaultLanguage = defaultLanguage;
+        this.notificationDisplayName = notificationDisplayName;
+        this.notificationFromAddress = notificationFromAddress;
+        this.notificationReplyToAddress = notificationReplyToAddress;
+    }
 
     public Hotel(String name, String description, String address, String city, String country,
                  String defaultLanguage) {
-        this.name = name;
-        this.description = description;
-        this.address = address;
-        this.city = city;
-        this.country = country;
-        this.defaultLanguage = defaultLanguage;
+        this(name, description, address, city, country, defaultLanguage, null, null, null);
     }
 
     public void update(String name, String description, String address, String city, String country,
-                       String defaultLanguage) {
+                       String defaultLanguage, String notificationDisplayName,
+                       String notificationFromAddress, String notificationReplyToAddress) {
         this.name = name;
         this.description = description;
         this.address = address;
         this.city = city;
         this.country = country;
         this.defaultLanguage = defaultLanguage;
+        this.notificationDisplayName = notificationDisplayName;
+        this.notificationFromAddress = notificationFromAddress;
+        this.notificationReplyToAddress = notificationReplyToAddress;
     }
 }

@@ -35,7 +35,9 @@ public class HotelService {
     @CacheEvict(cacheNames = "hotel-list", allEntries = true)
     public HotelResponse create(HotelRequest request) {
         Hotel hotel = new Hotel(request.name(), request.description(), request.address(), request.city(),
-                request.country(), request.defaultLanguage() == null ? "en" : request.defaultLanguage());
+                request.country(), request.defaultLanguage() == null ? "en" : request.defaultLanguage(),
+                request.notificationDisplayName(), request.notificationFromAddress(),
+                request.notificationReplyToAddress());
         
         return HotelResponse.from(hotelRepo.save(hotel));
     }
@@ -45,7 +47,9 @@ public class HotelService {
     public HotelResponse update(UUID id, HotelRequest request) {
         Hotel hotel = findEntity(id);
         hotel.update(request.name(), request.description(), request.address(), request.city(), request.country(),
-                request.defaultLanguage() == null ? "en" : request.defaultLanguage());
+                request.defaultLanguage() == null ? "en" : request.defaultLanguage(),
+                request.notificationDisplayName(), request.notificationFromAddress(),
+                request.notificationReplyToAddress());
         return HotelResponse.from(hotel);
     }
 

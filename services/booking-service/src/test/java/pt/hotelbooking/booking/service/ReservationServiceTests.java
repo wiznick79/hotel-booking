@@ -1,6 +1,7 @@
 package pt.hotelbooking.booking.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationServiceTests {
@@ -55,6 +57,11 @@ class ReservationServiceTests {
     @InjectMocks
     private ReservationService reservationService;
 
+    @BeforeEach
+    void setUp() {
+        lenient().when(hotelCatalogClient.getHotel(anyString())).thenReturn(hotel(true));
+    }
+
     @Test
     void rejectsNewBookingForInactiveHotel() {
         ReservationRequest request = new ReservationRequest(
@@ -69,7 +76,7 @@ class ReservationServiceTests {
                 List.of("room-1"),
                 null,
                 null);
-        when(hotelCatalogClient.hotelIsActive("hotel-1")).thenReturn(false);
+        when(hotelCatalogClient.getHotel("hotel-1")).thenReturn(hotel(false));
 
         assertThatThrownBy(() -> reservationService.create(request))
                 .isInstanceOf(IllegalStateException.class)
@@ -157,7 +164,6 @@ class ReservationServiceTests {
                 hotelId, "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
                 List.of("room-1"), null, null);
-        when(hotelCatalogClient.hotelIsActive(hotelId)).thenReturn(true);
         UUID roomTypeId = UUID.randomUUID();
         when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
                 roomTypeId, UUID.fromString(hotelId), 2, true));
@@ -184,7 +190,6 @@ class ReservationServiceTests {
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
                 List.of("room-1"), null, null);
         UUID roomTypeId = UUID.randomUUID();
-        when(hotelCatalogClient.hotelIsActive(hotelId)).thenReturn(true);
         when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
                 roomTypeId, UUID.fromString(hotelId), 2, true));
         when(hotelCatalogClient.findBookableRooms(anyString(), anyString(), any(), any())).thenReturn(List.of(
@@ -276,6 +281,16 @@ class ReservationServiceTests {
                 new RoomAssignmentRequest("room-2")))
                 .isInstanceOf(pt.hotelbooking.booking.exception.RoomReassignmentException.class)
                 .hasMessage("Room is not available.");
+    }
+
+    private HotelCatalogClient.HotelDetails hotel(boolean active) {
+        return new HotelCatalogClient.HotelDetails(
+                UUID.randomUUID(),
+                "Hotel Morgadinha",
+                "Hotel Morgadinha",
+                "morgadinha@wiznick.net",
+                "morgadinha@wiznick.net",
+                active);
     }
 
     private ReservationRequest requestWithRoom(String roomId) {

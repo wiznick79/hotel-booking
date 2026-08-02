@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,7 +43,10 @@ class NotificationProcessorTests {
 
         notificationProcessor.processReservationCreated(event);
 
-        verify(notificationRepository).save(any(Notification.class));
+        verify(notificationRepository).save(argThat(notification ->
+                notification.getSenderDisplayName().equals("Hotel Morgadinha")
+                        && notification.getSenderFromAddress().equals("morgadinha@wiznick.net")
+                        && notification.getSenderReplyToAddress().equals("reservas@hotelmorgadinha.pt")));
     }
 
     @Test
@@ -88,6 +92,10 @@ class NotificationProcessorTests {
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 12),
                 BigDecimal.valueOf(100),
-                "EUR");
+                "EUR",
+                "Hotel Morgadinha",
+                "Hotel Morgadinha",
+                "morgadinha@wiznick.net",
+                "reservas@hotelmorgadinha.pt");
     }
 }

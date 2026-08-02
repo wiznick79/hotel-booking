@@ -103,13 +103,21 @@ public class HotelCatalogClient {
     }
 
     public boolean hotelIsActive(String hotelId) {
+        return getHotel(hotelId).active();
+    }
+
+    public HotelDetails getHotel(String hotelId) {
         HotelDetails hotel = executeHotelCall("retrieve hotel", () ->
                 restClient.mutate().baseUrl(hotelServiceUrl).build().get()
                     .uri("/api/hotels/{id}", hotelId)
                     .retrieve()
                     .body(HotelDetails.class));
 
-        return hotel != null && hotel.active();
+        if (hotel == null) {
+            throw new IllegalStateException("Hotel service returned an empty hotel response.");
+        }
+
+        return hotel;
     }
 
     public BigDecimal quoteRoomType(
@@ -189,9 +197,12 @@ public class HotelCatalogClient {
             boolean active) {
     }
 
-    private record HotelDetails(
+    public record HotelDetails(
             UUID id,
             String name,
+            String notificationDisplayName,
+            String notificationFromAddress,
+            String notificationReplyToAddress,
             boolean active) {
     }
 
