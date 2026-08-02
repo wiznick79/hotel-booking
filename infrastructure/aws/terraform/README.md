@@ -109,6 +109,21 @@ The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted 
 - `/hotel-booking/staging/cors-allowed-origins`;
 - `/hotel-booking/staging/notification-email-from`.
 
+SMTP delivery defaults to the private Mailpit container until the optional provider
+parameters below are created. The password must be a `SecureString`; the remaining
+values may be ordinary `String` parameters:
+
+- `/hotel-booking/staging/notification-email-smtp-host`;
+- `/hotel-booking/staging/notification-email-smtp-port`;
+- `/hotel-booking/staging/notification-email-smtp-username`;
+- `/hotel-booking/staging/notification-email-smtp-password`;
+- `/hotel-booking/staging/notification-email-smtp-auth`;
+- `/hotel-booking/staging/notification-email-smtp-starttls-enable`;
+- `/hotel-booking/staging/notification-email-smtp-starttls-required`.
+
+See `docs/operations/email-delivery.md` for the Amazon SES SMTP configuration and
+domain-verification process.
+
 Real parameter values are created outside Git. `infrastructure/aws/staging/.env.example` documents the resulting file shape but must never contain a real secret.
 
 The staging identity service runs with the `postgres` profile only. On an empty identity database,

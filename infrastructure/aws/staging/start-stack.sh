@@ -23,6 +23,18 @@ read_parameter() {
     --output text
 }
 
+read_optional_parameter() {
+  local parameter_name="$1"
+  local default_value="$2"
+
+  aws ssm get-parameter \
+    --region "$aws_region" \
+    --name "$parameter_prefix/$parameter_name" \
+    --with-decryption \
+    --query 'Parameter.Value' \
+    --output text 2>/dev/null || printf '%s\n' "$default_value"
+}
+
 install -d -m 700 "$runtime_directory"
 
 temporary_environment_file=$(mktemp "$runtime_directory/.env.XXXXXX")
@@ -43,6 +55,13 @@ GRAFANA_ADMIN_PASSWORD=$(read_parameter grafana-admin-password)
 USE_SWAGGER=false
 CORS_ALLOWED_ORIGINS=$(read_parameter cors-allowed-origins)
 NOTIFICATION_EMAIL_FROM=$(read_parameter notification-email-from)
+MAIL_HOST=$(read_optional_parameter notification-email-smtp-host mailpit)
+MAIL_PORT=$(read_optional_parameter notification-email-smtp-port 1025)
+MAIL_USERNAME=$(read_optional_parameter notification-email-smtp-username '')
+MAIL_PASSWORD=$(read_optional_parameter notification-email-smtp-password '')
+MAIL_SMTP_AUTH=$(read_optional_parameter notification-email-smtp-auth false)
+MAIL_SMTP_STARTTLS_ENABLE=$(read_optional_parameter notification-email-smtp-starttls-enable false)
+MAIL_SMTP_STARTTLS_REQUIRED=$(read_optional_parameter notification-email-smtp-starttls-required false)
 EOF
 
 mv "$temporary_environment_file" "$runtime_directory/.env"

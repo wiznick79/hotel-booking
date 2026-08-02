@@ -97,7 +97,7 @@ The main users are trusted owners and managers. Existing staff may continue usin
   become terminal after a configured maximum, and can be inspected and manually replayed by staff assigned to the
   relevant hotel.
 - Email is the first notification channel. SMS delivery for phone-only bookings is a later provider integration.
-- Local development uses Mailpit as a safe SMTP inbox. Production must use a real delivery provider, initially through the same SMTP abstraction and later optionally AWS SES; raw access tokens must never be logged.
+- Local development uses Mailpit as a safe SMTP inbox. Staging and production support a real SMTP delivery provider with authenticated STARTTLS settings supplied through environment variables and AWS Parameter Store. Amazon SES is the initial recommended provider; raw credentials must never be logged or committed.
 
 ### Internationalization
 
