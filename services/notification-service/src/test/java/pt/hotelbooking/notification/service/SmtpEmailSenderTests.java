@@ -51,4 +51,27 @@ class SmtpEmailSenderTests {
         assertThat(message.getSubject()).isEqualTo("Booking confirmed");
         assertThat(message.getText()).isEqualTo("Your booking is confirmed.");
     }
+
+    @Test
+    void shouldUseHotelSpecificSenderAndReplyToAddress() {
+        Notification notification = new Notification(
+                UUID.randomUUID(),
+                "hotel-1",
+                "guest@example.com",
+                "Booking confirmed",
+                "Your booking is confirmed.",
+                "Hotel Morgadinha",
+                "morgadinha@wiznick.net",
+                "reservas@hotelmorgadinha.pt");
+
+        emailSender.send(notification);
+
+        ArgumentCaptor<SimpleMailMessage> messageCaptor =
+                ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(messageCaptor.capture());
+
+        SimpleMailMessage message = messageCaptor.getValue();
+        assertThat(message.getFrom()).isEqualTo("Hotel Morgadinha <morgadinha@wiznick.net>");
+        assertThat(message.getReplyTo()).isEqualTo("reservas@hotelmorgadinha.pt");
+    }
 }

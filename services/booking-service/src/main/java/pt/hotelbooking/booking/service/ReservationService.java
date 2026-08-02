@@ -267,7 +267,8 @@ public class ReservationService {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
 
-        if (!hotelCatalogClient.hotelIsActive(request.hotelId())) {
+        HotelCatalogClient.HotelDetails hotel = hotelCatalogClient.getHotel(request.hotelId());
+        if (!hotel.active()) {
             throw new IllegalStateException("The hotel is not accepting new bookings.");
         }
 
@@ -322,7 +323,8 @@ public class ReservationService {
                 savedReservation.getCheckInDate(),
                 savedReservation.getCheckOutDate(),
                 savedReservation.getTotalPrice(),
-                savedReservation.getCurrency()));
+                savedReservation.getCurrency(), hotel.name(), hotel.notificationDisplayName(),
+                hotel.notificationFromAddress(), hotel.notificationReplyToAddress()));
 
         return ReservationResponse.from(savedReservation);
     }
@@ -407,6 +409,8 @@ public class ReservationService {
     }
 
     private void publishReservationEvent(String eventType, Reservation reservation) {
+        HotelCatalogClient.HotelDetails hotel = hotelCatalogClient.getHotel(reservation.getHotelId());
+
         eventPublisher.publish(new pt.hotelbooking.booking.event.ReservationNotificationEvent(
                 eventType,
                 reservation.getId(),
@@ -416,7 +420,8 @@ public class ReservationService {
                 reservation.getCheckInDate(),
                 reservation.getCheckOutDate(),
                 reservation.getTotalPrice(),
-                reservation.getCurrency()));
+                reservation.getCurrency(), hotel.name(), hotel.notificationDisplayName(),
+                hotel.notificationFromAddress(), hotel.notificationReplyToAddress()));
     }
 
     private BigDecimal validateAndQuoteRoomTypes(String hotelId, List<String> roomTypeIds,

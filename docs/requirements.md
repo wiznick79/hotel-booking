@@ -98,6 +98,7 @@ The main users are trusted owners and managers. Existing staff may continue usin
   relevant hotel.
 - Email is the first notification channel. SMS delivery for phone-only bookings is a later provider integration.
 - Local development uses Mailpit as a safe SMTP inbox. Staging and production support a real SMTP delivery provider with authenticated STARTTLS settings supplied through environment variables and AWS Parameter Store. Amazon SES is the initial recommended provider; raw credentials must never be logged or committed.
+- Each hotel may configure its own email display name, from address, and reply-to address. These values are captured in the reservation notification event so notification-service does not synchronously depend on hotel-service while delivering email. Blank hotel-specific values fall back to the deployment-wide sender.
 
 ### Internationalization
 
