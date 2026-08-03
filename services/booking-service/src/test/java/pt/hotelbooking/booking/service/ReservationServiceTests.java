@@ -158,6 +158,78 @@ class ReservationServiceTests {
     }
 
     @Test
+    void rejectsCancellingHistoricalReservation() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351000000000", null, 1,
+                LocalDate.now().minusDays(3), LocalDate.now().minusDays(1), null);
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancel(id))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Historical reservations cannot be changed.");
+    }
+
+    @Test
+    void rejectsConfirmingHistoricalReservation() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351000000000", null, 1,
+                LocalDate.now().minusDays(3), LocalDate.now().minusDays(1), null);
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.confirm(id, "staff"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Historical reservations cannot be changed.");
+    }
+
+    @Test
+    void checksInConfirmedReservationDuringItsStay() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351000000000", null, 1,
+                LocalDate.now(), LocalDate.now().plusDays(2), null);
+        reservation.confirm();
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+
+        var result = reservationService.checkIn(id, "staff");
+
+        assertThat(result.status())
+                .isEqualTo(pt.hotelbooking.booking.model.entity.ReservationStatus.CHECKED_IN);
+    }
+
+    @Test
+    void checksOutCheckedInReservation() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351000000000", null, 1,
+                LocalDate.now().minusDays(2), LocalDate.now().plusDays(1), null);
+        reservation.confirm();
+        reservation.checkIn();
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+
+        var result = reservationService.checkOut(id, "staff");
+
+        assertThat(result.status())
+                .isEqualTo(pt.hotelbooking.booking.model.entity.ReservationStatus.CHECKED_OUT);
+    }
+
+    @Test
+    void marksPastConfirmedReservationAsNoShow() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351000000000", null, 1,
+                LocalDate.now().minusDays(2), LocalDate.now().minusDays(1), null);
+        reservation.confirm();
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+
+        var result = reservationService.markNoShow(id, "staff");
+
+        assertThat(result.status())
+                .isEqualTo(pt.hotelbooking.booking.model.entity.ReservationStatus.NO_SHOW);
+    }
+
+    @Test
     void rejectsBookingWhenRoomIsAlreadyReserved() {
         String hotelId = "00000000-0000-0000-0000-000000000001";
         ReservationRequest request = new ReservationRequest(

@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
 
-    List<Reservation> findByHotelIdAndCheckInDateLessThanAndCheckOutDateGreaterThan(
+    List<Reservation> findByHotelIdAndCheckInDateLessThanAndCheckOutDateGreaterThanOrderByCheckInDateAscIdAsc(
             String hotelId, LocalDate to, LocalDate from);
 
     @Query("""

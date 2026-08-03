@@ -69,6 +69,18 @@ export function confirmReservation(accessToken: string, id: string) {
   return patch<Reservation>(`/reservations/${id}/confirm`, {}, accessToken);
 }
 
+export function checkInReservation(accessToken: string, id: string) {
+  return patch<Reservation>(`/reservations/${id}/check-in`, {}, accessToken);
+}
+
+export function checkOutReservation(accessToken: string, id: string) {
+  return patch<Reservation>(`/reservations/${id}/check-out`, {}, accessToken);
+}
+
+export function markReservationAsNoShow(accessToken: string, id: string) {
+  return patch<Reservation>(`/reservations/${id}/no-show`, {}, accessToken);
+}
+
 export function cancelReservation(accessToken: string, id: string) {
   return del(`/reservations/${id}`, accessToken);
 }

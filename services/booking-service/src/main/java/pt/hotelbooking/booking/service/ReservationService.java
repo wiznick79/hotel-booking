@@ -70,7 +70,10 @@ public class ReservationService {
             throw new IllegalArgumentException("The end date must be after the start date.");
         }
 
-        return reservationRepo.findByHotelIdAndCheckInDateLessThanAndCheckOutDateGreaterThan(hotelId, to, from)
+        return reservationRepo.findByHotelIdAndCheckInDateLessThanAndCheckOutDateGreaterThanOrderByCheckInDateAscIdAsc(
+                        hotelId,
+                        to,
+                        from)
                 .stream()
                 .map(ReservationResponse::from)
                 .toList();
@@ -171,6 +174,8 @@ public class ReservationService {
 
     private void cancel(Reservation reservation) {
 
+        ensureStayIsNotHistorical(reservation);
+
         if (reservation.getStatus() == ReservationStatus.CANCELLED
                 || reservation.getStatus() == ReservationStatus.CHECKED_OUT) {
             throw new IllegalStateException("Reservation cannot be cancelled in its current status.");
@@ -192,6 +197,8 @@ public class ReservationService {
         Reservation reservation = reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
+        ensureStayIsNotHistorical(reservation);
+
         reservation.confirm();
         auditLogRepository.save(new AuditLog(
                 actor,
@@ -200,6 +207,67 @@ public class ReservationService {
                 reservation.getId(),
                 "Reservation confirmed by staff."));
         publishReservationEvent("ReservationConfirmed", reservation);
+
+        return ReservationResponse.from(reservation);
+    }
+
+    @Transactional
+    public ReservationResponse checkIn(UUID id, String actor) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(reservation.getCheckInDate()) || !today.isBefore(reservation.getCheckOutDate())) {
+            throw new IllegalStateException("Reservation can only be checked in during its stay.");
+        }
+
+        reservation.checkIn();
+        auditLogRepository.save(new AuditLog(
+                actor,
+                "RESERVATION_CHECKED_IN",
+                "Reservation",
+                reservation.getId(),
+                "Guest checked in."));
+
+        return ReservationResponse.from(reservation);
+    }
+
+    @Transactional
+    public ReservationResponse checkOut(UUID id, String actor) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        if (LocalDate.now().isBefore(reservation.getCheckInDate())) {
+            throw new IllegalStateException("Reservation cannot be checked out before check-in.");
+        }
+
+        reservation.checkOut();
+        auditLogRepository.save(new AuditLog(
+                actor,
+                "RESERVATION_CHECKED_OUT",
+                "Reservation",
+                reservation.getId(),
+                "Guest checked out."));
+
+        return ReservationResponse.from(reservation);
+    }
+
+    @Transactional
+    public ReservationResponse markNoShow(UUID id, String actor) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        if (!reservation.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new IllegalStateException("A reservation can only be marked as no-show after its check-in date.");
+        }
+
+        reservation.markNoShow();
+        auditLogRepository.save(new AuditLog(
+                actor,
+                "RESERVATION_MARKED_NO_SHOW",
+                "Reservation",
+                reservation.getId(),
+                "Guest marked as no-show."));
 
         return ReservationResponse.from(reservation);
     }
@@ -216,6 +284,8 @@ public class ReservationService {
                                           String actor) {
         Reservation reservation = reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
+
+        ensureStayIsNotHistorical(reservation);
 
         var item = reservation.getItems().stream()
                 .filter(reservationItem -> reservationItem.getId().equals(itemId))
@@ -254,6 +324,13 @@ public class ReservationService {
                 String.valueOf(previousRoomId) + " -> " + request.roomId()));
 
         return ReservationResponse.from(reservation);
+    }
+
+    private void ensureStayIsNotHistorical(Reservation reservation) {
+
+        if (reservation.getCheckOutDate().isBefore(LocalDate.now())) {
+            throw new IllegalStateException("Historical reservations cannot be changed.");
+        }
     }
 
     @Transactional

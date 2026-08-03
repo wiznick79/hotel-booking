@@ -20,6 +20,7 @@ import { findAffectedReservations, findReservations } from '../api/reservationAp
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
+import { readHashQuery, replaceHashQuery } from '../utils/hashQuery';
 
 export function RoomsPage({ hotelId }: { hotelId: string }) {
   const { session } = useAuth();
@@ -27,8 +28,8 @@ export function RoomsPage({ hotelId }: { hotelId: string }) {
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [unavailabilities, setUnavailabilities] = useState<RoomUnavailability[]>([]);
-  const [view, setView] = useState<'list' | 'calendar'>('list');
-  const [weekStart, setWeekStart] = useState(getMonday(new Date()));
+  const [view, setView] = useState<'list' | 'calendar'>(() => readViewParameter());
+  const [weekStart, setWeekStart] = useState(() => readWeekParameter());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlockFormOpen, setIsBlockFormOpen] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
@@ -83,10 +84,30 @@ export function RoomsPage({ hotelId }: { hotelId: string }) {
     void loadRooms();
   }, [loadRooms]);
 
+  useEffect(() => {
+    const synchronizeView = () => {
+      setView(readViewParameter());
+      setWeekStart(readWeekParameter());
+    };
+
+    window.addEventListener('hashchange', synchronizeView);
+    return () => window.removeEventListener('hashchange', synchronizeView);
+  }, []);
+
   const calendarDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
     [weekStart],
   );
+
+  function changeView(nextView: 'list' | 'calendar') {
+    setView(nextView);
+    replaceHashQuery({ view: nextView, week: toDateInputValue(weekStart) });
+  }
+
+  function changeWeek(nextWeekStart: Date) {
+    setWeekStart(nextWeekStart);
+    replaceHashQuery({ view, week: toDateInputValue(nextWeekStart) });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -282,14 +303,14 @@ export function RoomsPage({ hotelId }: { hotelId: string }) {
             <button
               type="button"
               className={view === 'list' ? '' : 'secondary-button'}
-              onClick={() => setView('list')}
+              onClick={() => changeView('list')}
             >
               Room list
             </button>
             <button
               type="button"
               className={view === 'calendar' ? '' : 'secondary-button'}
-              onClick={() => setView('calendar')}
+              onClick={() => changeView('calendar')}
             >
               Weekly availability
             </button>
@@ -340,21 +361,21 @@ export function RoomsPage({ hotelId }: { hotelId: string }) {
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setWeekStart(addDays(weekStart, -7))}
+                    onClick={() => changeWeek(addDays(weekStart, -7))}
                   >
                     Previous week
                   </button>
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setWeekStart(getMonday(new Date()))}
+                    onClick={() => changeWeek(getMonday(new Date()))}
                   >
                     This week
                   </button>
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => setWeekStart(addDays(weekStart, 7))}
+                    onClick={() => changeWeek(addDays(weekStart, 7))}
                   >
                     Next week
                   </button>
@@ -606,6 +627,19 @@ function toDateInputValue(date: Date) {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function readViewParameter(): 'list' | 'calendar' {
+  return readHashQuery().get('view') === 'calendar' ? 'calendar' : 'list';
+}
+
+function readWeekParameter() {
+  const value = readHashQuery().get('week');
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return getMonday(new Date());
+  }
+
+  return getMonday(new Date(`${value}T00:00:00`));
 }
 
 function formatWeekday(date: Date) {

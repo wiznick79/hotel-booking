@@ -22,7 +22,23 @@ function App() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
 
   useEffect(() => {
-    setSelectedHotelId(session?.claims.hotelIds[0] ?? '');
+    if (!session) {
+      setSelectedHotelId('');
+      return;
+    }
+
+    const rememberedHotelId = localStorage.getItem('hotel-booking.selected-hotel-id');
+    setSelectedHotelId((currentHotelId) => {
+      if (session.claims.hotelIds.includes(currentHotelId)) {
+        return currentHotelId;
+      }
+
+      if (rememberedHotelId && session.claims.hotelIds.includes(rememberedHotelId)) {
+        return rememberedHotelId;
+      }
+
+      return session.claims.hotelIds[0] ?? '';
+    });
   }, [session]);
 
   useEffect(() => {
@@ -59,10 +75,15 @@ function App() {
     '/change-password': <ChangePasswordPage />,
   };
 
+  function handleHotelChange(hotelId: string) {
+    localStorage.setItem('hotel-booking.selected-hotel-id', hotelId);
+    setSelectedHotelId(hotelId);
+  }
+
   return (
     <AppLayout
       selectedHotelId={selectedHotelId}
-      onHotelChange={setSelectedHotelId}
+      onHotelChange={handleHotelChange}
       hotels={hotels}
     >
       {pages[path] ?? <DashboardPage hotelId={selectedHotelId} />}
@@ -71,7 +92,7 @@ function App() {
 }
 
 function readPath() {
-  const path = window.location.hash.replace(/^#/, '');
+  const [path] = window.location.hash.replace(/^#/, '').split('?');
 
   return path || '/';
 }

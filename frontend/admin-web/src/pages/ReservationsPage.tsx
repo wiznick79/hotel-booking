@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Reservation, ReservationItem } from '../api/reservationApi';
 import {
   assignReservationRoom,
   cancelReservation,
+  checkInReservation,
+  checkOutReservation,
   confirmReservation,
   findReservations,
+  markReservationAsNoShow,
 } from '../api/reservationApi';
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
 import { findBookableRooms, findRooms, findRoomTypes } from '../api/roomApi';
 import type { Room, RoomType } from '../api/roomApi';
+import { readHashQuery, replaceHashQuery } from '../utils/hashQuery';
 
 type ReservationsPageProps = {
   hotelId: string;
@@ -22,19 +26,27 @@ type AssignmentTarget = {
   item: ReservationItem;
 };
 
+type ReservationSortKey = 'guestName' | 'checkInDate' | 'guestCount' | 'status' | 'totalPrice';
+
+type SortDirection = 'ascending' | 'descending';
+
 export function ReservationsPage({ hotelId }: ReservationsPageProps) {
   const { session } = useAuth();
-  const [fromDate, setFromDate] = useState(today());
-  const [toDate, setToDate] = useState(addDays(30));
+  const [fromDate, setFromDate] = useState(() => readDateParameter('from', today()));
+  const [toDate, setToDate] = useState(() => readDateParameter('to', addDays(30)));
+  const [appliedDateRange, setAppliedDateRange] = useState(() => readDateRange());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [assignmentTarget, setAssignmentTarget] = useState<AssignmentTarget | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [candidateRooms, setCandidateRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [sortKey, setSortKey] = useState<ReservationSortKey>('checkInDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('ascending');
 
   const loadReservations = useCallback(async () => {
     if (!hotelId || !session) {
@@ -46,7 +58,12 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
 
     try {
       const [loadedReservations, loadedRooms, loadedRoomTypes] = await Promise.all([
-        findReservations(session.accessToken, hotelId, fromDate, toDate),
+        findReservations(
+          session.accessToken,
+          hotelId,
+          appliedDateRange.fromDate,
+          appliedDateRange.toDate,
+        ),
         findRooms(session.accessToken),
         findRoomTypes(session.accessToken),
       ]);
@@ -60,7 +77,7 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [fromDate, hotelId, session, toDate]);
+  }, [appliedDateRange, hotelId, session]);
 
   useEffect(() => {
     if (!hotelId) {
@@ -71,9 +88,46 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
     void loadReservations();
   }, [hotelId, loadReservations]);
 
-  function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void loadReservations();
+  useEffect(() => {
+    const synchronizeFilters = () => {
+      const dateRange = readDateRange();
+      setFromDate(dateRange.fromDate);
+      setToDate(dateRange.toDate);
+      setAppliedDateRange(dateRange);
+    };
+
+    window.addEventListener('hashchange', synchronizeFilters);
+    return () => window.removeEventListener('hashchange', synchronizeFilters);
+  }, []);
+
+  const sortedReservations = useMemo(
+    () => [...reservations].sort((first, second) => compareReservations(first, second, sortKey, sortDirection)),
+    [reservations, sortDirection, sortKey],
+  );
+
+  function toggleSort(nextSortKey: ReservationSortKey) {
+    if (nextSortKey === sortKey) {
+      setSortDirection((currentDirection) => currentDirection === 'ascending' ? 'descending' : 'ascending');
+      return;
+    }
+
+    setSortKey(nextSortKey);
+    setSortDirection('ascending');
+  }
+
+  function updateFromDate(nextFromDate: string) {
+    setFromDate(nextFromDate);
+    applyDateRange(nextFromDate, toDate);
+  }
+
+  function updateToDate(nextToDate: string) {
+    setToDate(nextToDate);
+    applyDateRange(fromDate, nextToDate);
+  }
+
+  function applyDateRange(nextFromDate: string, nextToDate: string) {
+    replaceHashQuery({ from: nextFromDate, to: nextToDate });
+    setAppliedDateRange({ fromDate: nextFromDate, toDate: nextToDate });
   }
 
   async function confirm(id: string) {
@@ -99,6 +153,24 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
       await loadReservations();
     } catch {
       setError('The reservation could not be cancelled.');
+    }
+  }
+
+  async function updateStayStatus(
+    id: string,
+    request: (accessToken: string, reservationId: string) => Promise<Reservation>,
+    failureMessage: string,
+  ) {
+    if (!session) {
+      return;
+    }
+
+    try {
+      const updatedReservation = await request(session.accessToken, id);
+      setSelectedReservation(updatedReservation);
+      await loadReservations();
+    } catch {
+      setError(failureMessage);
     }
   }
 
@@ -197,17 +269,17 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
 
       {hotelId && (
         <>
-          <form className="filter-bar" onSubmit={handleFilterSubmit}>
+          <div className="filter-bar">
             <label>
               From
-              <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} required />
+              <input type="date" value={fromDate} onChange={(event) => updateFromDate(event.target.value)} required />
             </label>
             <label>
               To
-              <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} required />
+              <input type="date" value={toDate} onChange={(event) => updateToDate(event.target.value)} required />
             </label>
-            <button type="submit" disabled={isLoading}>{isLoading ? 'Loading...' : 'Apply filters'}</button>
-          </form>
+            {isLoading && <span className="filter-status">Loading...</span>}
+          </div>
 
           {error && <p className="form-error" role="alert">{error}</p>}
 
@@ -223,17 +295,20 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
               <table>
                 <thead>
                   <tr>
-                    <th>Guest</th>
-                    <th>Stay</th>
+                    <th>{renderSortableHeader('Guest', 'guestName')}</th>
+                    <th>{renderSortableHeader('Stay', 'checkInDate')}</th>
                     <th>Room assignment</th>
-                    <th>Guests</th>
-                    <th>Status</th>
-                    <th>Total</th>
+                    <th>{renderSortableHeader('Guests', 'guestCount')}</th>
+                    <th>{renderSortableHeader('Status', 'status')}</th>
+                    <th>{renderSortableHeader('Total', 'totalPrice')}</th>
                     <th><span className="visually-hidden">Actions</span></th>
                   </tr>
                 </thead>
-                <tbody>
-                  {reservations.map((reservation) => (
+                  <tbody>
+                  {sortedReservations.map((reservation) => {
+                    const isPastStay = reservation.checkOutDate < today();
+
+  return (
                     <tr key={reservation.id}>
                       <td>
                         <strong>{reservation.guestName}</strong>
@@ -244,7 +319,7 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
                         {reservation.items.map((item) => (
                           <div className="assignment-line" key={item.id}>
                             <span>{formatAssignment(item.roomTypeId, item.roomId, roomTypes, rooms)}</span>
-                            {canChangeAssignment(reservation) && (
+                            {canChangeAssignment(reservation, isPastStay) && (
                               <button
                                 type="button"
                                 className="text-button"
@@ -262,19 +337,66 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
                       </td>
                       <td>{formatPrice(reservation.totalPrice, reservation.currency)}</td>
                       <td className="reservation-actions">
-                        {reservation.status === 'PENDING' && (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => setSelectedReservation(reservation)}
+                        >
+                          View
+                        </button>
+                        {reservation.status === 'PENDING' && !isPastStay && (
                           <button type="button" className="secondary-button" onClick={() => void confirm(reservation.id)}>
                             Confirm
                           </button>
                         )}
-                        {!['CANCELLED', 'CHECKED_OUT'].includes(reservation.status) && (
+                        {reservation.status === 'CONFIRMED' && canCheckIn(reservation) && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void updateStayStatus(
+                              reservation.id,
+                              checkInReservation,
+                              'The guest could not be checked in.',
+                            )}
+                          >
+                            Check in
+                          </button>
+                        )}
+                        {reservation.status === 'CHECKED_IN' && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void updateStayStatus(
+                              reservation.id,
+                              checkOutReservation,
+                              'The guest could not be checked out.',
+                            )}
+                          >
+                            Check out
+                          </button>
+                        )}
+                        {canMarkNoShow(reservation) && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => void updateStayStatus(
+                              reservation.id,
+                              markReservationAsNoShow,
+                              'The reservation could not be marked as no-show.',
+                            )}
+                          >
+                            No-show
+                          </button>
+                        )}
+                        {!isPastStay && !['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(reservation.status) && (
                           <button type="button" className="secondary-button" onClick={() => void cancel(reservation.id)}>
                             Cancel
                           </button>
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -306,10 +428,60 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
               </div>
             </form>
           )}
+
+          {selectedReservation && (
+            <section className="setup-card reservation-detail-card">
+              <div className="page-heading compact-heading">
+                <div>
+                  <p className="eyebrow">Reservation details</p>
+                  <h2>{selectedReservation.guestName}</h2>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setSelectedReservation(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <dl className="reservation-details">
+                <div><dt>Booking ID</dt><dd>{selectedReservation.id}</dd></div>
+                <div><dt>Status</dt><dd>{formatStatus(selectedReservation.status)}</dd></div>
+                <div><dt>Stay</dt><dd>{selectedReservation.checkInDate} – {selectedReservation.checkOutDate}</dd></div>
+                <div><dt>Guests</dt><dd>{selectedReservation.guestCount}</dd></div>
+                <div><dt>Phone</dt><dd>{selectedReservation.guestPhone}</dd></div>
+                <div><dt>Email</dt><dd>{selectedReservation.guestEmail ?? 'Not provided'}</dd></div>
+                <div><dt>Payment</dt><dd>{formatPaymentMode(selectedReservation.paymentMode)}</dd></div>
+                <div><dt>Total</dt><dd>{formatPrice(selectedReservation.totalPrice, selectedReservation.currency)}</dd></div>
+                <div><dt>Discount</dt><dd>{selectedReservation.discountCode ?? 'None'}</dd></div>
+                <div><dt>Confirmation</dt><dd>{selectedReservation.manualConfirmationRequired ? 'Manual confirmation required' : 'Not required'}</dd></div>
+                <div className="full-width"><dt>Rooms</dt><dd>{selectedReservation.items.map((item) => formatAssignment(item.roomTypeId, item.roomId, roomTypes, rooms)).join(', ')}</dd></div>
+                <div className="full-width"><dt>Guest notes</dt><dd>{selectedReservation.notes || 'No notes provided.'}</dd></div>
+              </dl>
+            </section>
+          )}
         </>
       )}
     </section>
   );
+
+  function renderSortableHeader(label: string, column: ReservationSortKey) {
+    const isActive = sortKey === column;
+    const directionLabel = sortDirection === 'ascending' ? 'ascending' : 'descending';
+
+    return (
+      <button
+        type="button"
+        className="sortable-header"
+        onClick={() => toggleSort(column)}
+        aria-label={`Sort by ${label}`}
+        aria-sort={isActive ? directionLabel : 'none'}
+      >
+        {label}
+        {isActive && <span aria-hidden="true">{sortDirection === 'ascending' ? ' ▲' : ' ▼'}</span>}
+      </button>
+    );
+  }
 }
 
 function today() {
@@ -332,8 +504,32 @@ function blocksInventory(reservation: Reservation) {
     || (reservation.holdUntil !== null && new Date(reservation.holdUntil) > new Date());
 }
 
-function canChangeAssignment(reservation: Reservation) {
-  return !['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(reservation.status);
+function canChangeAssignment(reservation: Reservation, isPastStay: boolean) {
+  return !isPastStay && !['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(reservation.status);
+}
+
+function readDateParameter(name: string, fallback: string) {
+  const value = readHashQuery().get(name);
+
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
+}
+
+function readDateRange() {
+  return {
+    fromDate: readDateParameter('from', today()),
+    toDate: readDateParameter('to', addDays(30)),
+  };
+}
+
+function canCheckIn(reservation: Reservation) {
+  const currentDate = today();
+
+  return reservation.checkInDate <= currentDate && reservation.checkOutDate > currentDate;
+}
+
+function canMarkNoShow(reservation: Reservation) {
+  return ['PENDING', 'CONFIRMED'].includes(reservation.status)
+    && reservation.checkInDate < today();
 }
 
 function statusTone(status: Reservation['status']) {
@@ -345,7 +541,51 @@ function statusTone(status: Reservation['status']) {
 }
 
 function formatStatus(status: string) {
+  if (status === 'CHECKED_OUT') {
+    return 'Completed';
+  }
+
+  if (status === 'NO_SHOW') {
+    return 'No-show';
+  }
+
   return status.replace('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPaymentMode(paymentMode: string) {
+  return paymentMode.replace('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function compareReservations(
+  first: Reservation,
+  second: Reservation,
+  sortKey: ReservationSortKey,
+  sortDirection: SortDirection,
+) {
+  const multiplier = sortDirection === 'ascending' ? 1 : -1;
+  const comparison = reservationSortValue(first, sortKey).localeCompare(reservationSortValue(second, sortKey));
+
+  return comparison === 0 ? first.id.localeCompare(second.id) : comparison * multiplier;
+}
+
+function reservationSortValue(reservation: Reservation, sortKey: ReservationSortKey) {
+  if (sortKey === 'guestName') {
+    return reservation.guestName.toLocaleLowerCase();
+  }
+
+  if (sortKey === 'guestCount') {
+    return reservation.guestCount.toString().padStart(4, '0');
+  }
+
+  if (sortKey === 'status') {
+    return reservation.status;
+  }
+
+  if (sortKey === 'totalPrice') {
+    return (reservation.totalPrice ?? 0).toFixed(2).padStart(14, '0');
+  }
+
+  return reservation.checkInDate;
 }
 
 function formatPrice(value: number | null, currency: string | null) {
