@@ -146,14 +146,14 @@ The service ports are also exposed locally for diagnostics: hotel `8081`, bookin
 ## Deployment and CI/CD
 
 - **GitHub Actions** runs Maven verification, validates Docker Compose, and builds backend and frontend Docker images for pushes and pull requests targeting `main`.
-- **Terraform** defines the AWS staging environment in `eu-west-3`: VPC, security group, Elastic IP, Amazon Linux 2023 EC2 host, Systems Manager access, an S3 deployment-artifact bucket, and GitHub OIDC deployment role.
+- **Terraform** defines the AWS staging environment in `eu-west-3`: VPC, security group, Elastic IP, Amazon Linux 2023 EC2 host, Systems Manager access, an S3 deployment-artifact bucket, GitHub OIDC deployment role, and a verified Amazon SES domain identity for `wiznick.net`.
 - The staging host is administered through AWS Systems Manager Session Manager; SSH is not exposed.
 - A manual deployment workflow delivers the repository artifact from GitHub to the host using short-lived OIDC credentials and Systems Manager. The host reads secrets from Parameter Store and starts the staging Compose override.
 - The current host builds service images sequentially from source. A later improvement is CI-built immutable images stored in a registry.
 
 ## Intentional current limitations and next evolution
 
-- The frontend containers need their first staging deployment and a DNS record for `admin.hotel.wiznick.net`.
+- The staging stack has been deployed at `hotel.wiznick.net` and `admin.hotel.wiznick.net`; it can be torn down and recreated through the documented Terraform lifecycle when cloud testing is needed.
 - Public hotel resolution must move from “first hotel” to a configured hostname or explicit hotel selection.
 - Internal synchronous calls currently use configured service URLs. Service discovery and/or a service mesh are not needed for the current single-host Compose deployment, but are valid future learning steps.
 - Kafka is self-managed in Compose. AWS MSK, SQS/SNS, or a managed Kafka provider are deployment alternatives, not application-level requirements.

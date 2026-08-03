@@ -8,7 +8,8 @@ locals {
 }
 
 resource "aws_s3_bucket" "deployment_artifacts" {
-  bucket = local.artifact_bucket_name
+  bucket        = local.artifact_bucket_name
+  force_destroy = var.force_destroy_deployment_bucket
 }
 
 resource "aws_s3_bucket_public_access_block" "deployment_artifacts" {

@@ -51,3 +51,9 @@ variable "ses_sending_domain" {
   type        = string
   default     = "wiznick.net"
 }
+
+variable "force_destroy_deployment_bucket" {
+  description = "Allow Terraform destroy to permanently delete all versioned deployment artifacts and backups. Keep false except during a reviewed teardown."
+  type        = bool
+  default     = false
+}
