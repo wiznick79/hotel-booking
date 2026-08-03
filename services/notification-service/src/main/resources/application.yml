@@ -46,6 +46,8 @@ spring:
 
 booking-events:
   topic: reservation-events
+  topics:
+    auto-create: ${BOOKING_EVENTS_TOPICS_AUTO_CREATE:true}
 
 notification:
   retry-delay-ms: 60000
@@ -57,7 +59,7 @@ notification:
     from: ${NOTIFICATION_EMAIL_FROM:no-reply@hotelbooking.local}
 
 public-frontend:
-  base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3000}
+  base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3002}
 
 guest-access:
   encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}

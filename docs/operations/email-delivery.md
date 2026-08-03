@@ -52,7 +52,10 @@ Docker Compose files, source code, or `.env.example`.
 1. In SES sandbox mode, verify the sender identity and the test recipient.
 2. Create a public booking using that test recipient address.
 3. Confirm that the notification is marked `SENT` in the admin panel and that the email
-   contains the guest-access link.
+   contains a guest-access link using the public site's hash route
+   (`/#/booking/{token}`). The browser reads the token from the fragment and requests the
+   existing read-only booking endpoint. The token is therefore not included in the initial
+   public-site HTTP request or ordinary web-server access logs.
 4. Open the link in a private browser window and confirm that it reaches only that
    reservation.
 

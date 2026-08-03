@@ -110,6 +110,10 @@ The host-side `infrastructure/aws/staging/start-stack.sh` reads these encrypted 
 - `/hotel-booking/staging/cors-allowed-origins`;
 - `/hotel-booking/staging/notification-email-from`.
 
+The optional non-secret `/hotel-booking/staging/public-frontend-base-url` parameter
+controls the host used in emailed guest-access links. It defaults to
+`https://hotel.wiznick.net` when omitted.
+
 SMTP delivery defaults to the private Mailpit container until the optional provider
 parameters below are created. The password must be a `SecureString`; the remaining
 values may be ordinary `String` parameters:
