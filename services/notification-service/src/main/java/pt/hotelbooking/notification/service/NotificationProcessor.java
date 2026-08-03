@@ -61,7 +61,7 @@ public class NotificationProcessor {
         }
 
         String accessLink = encryptedGuestAccessToken == null ? ""
-                : " Guest access link: " + publicFrontendBaseUrl + "/reservations/guest/"
+                : " Guest access link: " + publicFrontendBaseUrl + "/#/booking/"
                 + guestAccessTokenCipher.decrypt(encryptedGuestAccessToken);
         String hotelNameForMessage = hotelName == null || hotelName.isBlank() ? "the hotel" : hotelName;
 

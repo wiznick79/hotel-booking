@@ -26,6 +26,25 @@ type AvailableRoomType = {
   currency: string;
 };
 
+type Reservation = {
+  id: string;
+  guestName: string;
+  guestCount: number;
+  checkInDate: string;
+  checkOutDate: string;
+  notes: string | null;
+  status: string;
+  items: ReservationItem[];
+  totalPrice: number;
+  currency: string;
+  paymentMode: string;
+  manualConfirmationRequired: boolean;
+};
+
+type ReservationItem = {
+  roomTypeId: string;
+};
+
 const api = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 export function App() {
@@ -33,6 +52,7 @@ export function App() {
   const [types, setTypes] = useState<RoomType[]>([]);
   const [path, setPath] = useState(readPath());
   const [loadError, setLoadError] = useState('');
+  const [createdReservation, setCreatedReservation] = useState<Reservation | null>(null);
 
   useEffect(() => {
     void loadHotelData();
@@ -69,10 +89,13 @@ export function App() {
     window.location.hash = '#/';
   }
 
-  function showConfirmation() {
+  function showConfirmation(reservation: Reservation) {
+    setCreatedReservation(reservation);
     window.history.replaceState(null, '', '#/confirmation');
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }
+
+  const guestAccessToken = readGuestAccessToken(path);
 
   return (
     <>
@@ -85,8 +108,14 @@ export function App() {
 
       <main>
         {loadError && <p className="error">{loadError}</p>}
-        {path === '/confirmation' ? (
-          <BookingConfirmation hotel={hotel} onReturnHome={returnHome} />
+        {guestAccessToken ? (
+          <GuestBooking hotel={hotel} roomTypes={types} token={guestAccessToken} onReturnHome={returnHome} />
+        ) : path === '/confirmation' ? (
+          <BookingConfirmation
+            hotel={hotel}
+            reservation={createdReservation}
+            onReturnHome={returnHome}
+          />
         ) : path === '/book' ? (
           <Booking hotel={hotel} onBack={returnHome} onSuccess={showConfirmation} />
         ) : (
@@ -143,7 +172,7 @@ function Landing({ hotel, types, onBook }: LandingProps) {
 type BookingProps = {
   hotel: Hotel | null;
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (reservation: Reservation) => void;
 };
 
 function Booking({ hotel, onBack, onSuccess }: BookingProps) {
@@ -250,7 +279,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
       });
 
       if (response.ok) {
-        onSuccess();
+        onSuccess(await response.json() as Reservation);
         return;
       }
 
@@ -369,10 +398,11 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
 
 type BookingConfirmationProps = {
   hotel: Hotel | null;
+  reservation: Reservation | null;
   onReturnHome: () => void;
 };
 
-function BookingConfirmation({ hotel, onReturnHome }: BookingConfirmationProps) {
+function BookingConfirmation({ hotel, reservation, onReturnHome }: BookingConfirmationProps) {
   return (
     <section className="booking-confirmation">
       <p className="eyebrow">Request received</p>
@@ -382,7 +412,124 @@ function BookingConfirmation({ hotel, onReturnHome }: BookingConfirmationProps) 
           ? `${hotel.name} will review your request and contact you shortly.`
           : 'We will review your request and contact you shortly.'}
       </p>
-      <p>If you provided an email address, we will send your booking details there.</p>
+      {reservation && (
+        <dl className="booking-summary">
+          <div>
+            <dt>Stay</dt>
+            <dd>{formatDateRange(reservation.checkInDate, reservation.checkOutDate)}</dd>
+          </div>
+          <div>
+            <dt>Guests</dt>
+            <dd>{reservation.guestCount}</dd>
+          </div>
+          <div>
+            <dt>Total</dt>
+            <dd>{formatCurrency(reservation.totalPrice, reservation.currency)}</dd>
+          </div>
+        </dl>
+      )}
+      <p>
+        If you provided an email address, we will send your booking details and a secure link
+        to view this reservation.
+      </p>
+      <button onClick={onReturnHome} type="button">Return to hotel</button>
+    </section>
+  );
+}
+
+type GuestBookingProps = {
+  hotel: Hotel | null;
+  roomTypes: RoomType[];
+  token: string;
+  onReturnHome: () => void;
+};
+
+function GuestBooking({ hotel, roomTypes, token, onReturnHome }: GuestBookingProps) {
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReservation() {
+      try {
+        const response = await get<Reservation>(`/reservations/guest/${encodeURIComponent(token)}`);
+
+        if (!cancelled) {
+          setReservation(response);
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError('This booking link is invalid, expired, or no longer available.');
+        }
+      }
+    }
+
+    void loadReservation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  if (loadError) {
+    return (
+      <section className="booking-confirmation">
+        <p className="eyebrow">Booking access</p>
+        <h1>We could not open this booking.</h1>
+        <p className="error">{loadError}</p>
+        <p>Please contact the hotel if you need help with an existing reservation.</p>
+        <button onClick={onReturnHome} type="button">Return to hotel</button>
+      </section>
+    );
+  }
+
+  if (!reservation) {
+    return (
+      <section className="booking-confirmation">
+        <p>Loading your booking details…</p>
+      </section>
+    );
+  }
+
+  const bookedRoomTypes = reservation.items
+    .map((item) => roomTypes.find((roomType) => roomType.id === item.roomTypeId)?.name ?? 'Room type')
+    .join(', ');
+
+  return (
+    <section className="booking-confirmation">
+      <p className="eyebrow">Your booking</p>
+      <h1>Hello, {reservation.guestName}</h1>
+      <p>
+        Your reservation at {hotel?.name ?? 'the hotel'} is currently{' '}
+        <strong>{formatReservationStatus(reservation.status)}</strong>.
+      </p>
+      <dl className="booking-summary">
+        <div>
+          <dt>Stay</dt>
+          <dd>{formatDateRange(reservation.checkInDate, reservation.checkOutDate)}</dd>
+        </div>
+        <div>
+          <dt>Guests</dt>
+          <dd>{reservation.guestCount}</dd>
+        </div>
+        <div>
+          <dt>Room type</dt>
+          <dd>{bookedRoomTypes}</dd>
+        </div>
+        <div>
+          <dt>Total</dt>
+          <dd>{formatCurrency(reservation.totalPrice, reservation.currency)}</dd>
+        </div>
+        <div>
+          <dt>Payment</dt>
+          <dd>{formatPaymentMode(reservation.paymentMode)}</dd>
+        </div>
+      </dl>
+      {reservation.manualConfirmationRequired && (
+        <p>Your booking request requires confirmation from the hotel.</p>
+      )}
+      <p className="muted">To change or cancel this booking, please contact the hotel directly.</p>
       <button onClick={onReturnHome} type="button">Return to hotel</button>
     </section>
   );
@@ -402,10 +549,36 @@ function formatCurrency(value: number, currency: string) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(value);
 }
 
+function formatDateRange(checkInDate: string, checkOutDate: string) {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return `${formatter.format(new Date(`${checkInDate}T00:00:00`))} – ${formatter.format(
+    new Date(`${checkOutDate}T00:00:00`),
+  )}`;
+}
+
+function formatReservationStatus(status: string) {
+  return status.toLowerCase().replaceAll('_', ' ');
+}
+
+function formatPaymentMode(paymentMode: string) {
+  return paymentMode.toLowerCase().replaceAll('_', ' ');
+}
+
 function dateAfter(days: number) {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 function readPath() {
   return window.location.hash.replace(/^#/, '') || '/';
+}
+
+function readGuestAccessToken(path: string) {
+  const match = /^\/booking\/([^/?#]+)$/.exec(path);
+
+  return match ? decodeURIComponent(match[1]) : null;
 }

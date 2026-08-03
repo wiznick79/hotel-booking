@@ -55,6 +55,7 @@ GRAFANA_ADMIN_PASSWORD=$(read_parameter grafana-admin-password)
 USE_SWAGGER=false
 CORS_ALLOWED_ORIGINS=$(read_parameter cors-allowed-origins)
 NOTIFICATION_EMAIL_FROM=$(read_parameter notification-email-from)
+PUBLIC_FRONTEND_BASE_URL=$(read_optional_parameter public-frontend-base-url https://hotel.wiznick.net)
 MAIL_HOST=$(read_optional_parameter notification-email-smtp-host mailpit)
 MAIL_PORT=$(read_optional_parameter notification-email-smtp-port 1025)
 MAIL_USERNAME=$(read_optional_parameter notification-email-smtp-username '')

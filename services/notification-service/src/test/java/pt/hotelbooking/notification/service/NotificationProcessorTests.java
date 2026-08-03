@@ -31,6 +31,9 @@ class NotificationProcessorTests {
     @Mock
     private EmailSender emailSender;
 
+    @Mock
+    private GuestAccessTokenCipher guestAccessTokenCipher;
+
     @InjectMocks
     private NotificationProcessor notificationProcessor;
 
@@ -69,6 +72,20 @@ class NotificationProcessorTests {
     }
 
     @Test
+    void shouldUsePublicFrontendHashRouteForGuestAccessLink() {
+        ReservationCreatedEvent event = event("guest@example.com", "encrypted-token");
+        ReflectionTestUtils.setField(notificationProcessor, "publicFrontendBaseUrl", "https://hotel.example");
+        when(notificationRepository.existsByReservationIdAndSubject(
+                event.reservationId(), "Hotel booking confirmation")).thenReturn(false);
+        when(guestAccessTokenCipher.decrypt("encrypted-token")).thenReturn("guest-token");
+
+        notificationProcessor.processReservationCreated(event);
+
+        verify(notificationRepository).save(argThat(notification -> notification.getBody()
+                .contains("https://hotel.example/#/booking/guest-token")));
+    }
+
+    @Test
     void shouldSendPendingNotificationThroughEmailSender() {
         Notification notification = new Notification(
                 UUID.randomUUID(), "hotel-1", "guest@example.com", "Subject", "Message");
@@ -83,11 +100,15 @@ class NotificationProcessorTests {
     }
 
     private ReservationCreatedEvent event(String email) {
+        return event(email, null);
+    }
+
+    private ReservationCreatedEvent event(String email, String encryptedGuestAccessToken) {
         return new ReservationCreatedEvent(
                 UUID.randomUUID(),
                 email,
                 "Guest",
-                null,
+                encryptedGuestAccessToken,
                 "hotel-1",
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 12),

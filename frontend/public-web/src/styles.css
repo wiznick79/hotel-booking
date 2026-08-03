@@ -110,6 +110,31 @@ article,
   padding: 3rem;
 }
 
+.booking-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.booking-summary div {
+  padding: 0.9rem;
+  background: #f7f4ee;
+}
+
+.booking-summary dt {
+  color: #64727a;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.booking-summary dd {
+  margin: 0.4rem 0 0;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
 .booking-card {
   display: grid;
   max-width: 680px;
@@ -167,6 +192,10 @@ textarea {
   color: #087443;
 }
 
+.muted {
+  color: #64727a;
+}
+
 .availability-summary {
   margin: 0;
   padding: .85rem 1rem;
@@ -177,7 +206,8 @@ textarea {
 
 @media (max-width: 700px) {
   .cards,
-  .form-grid {
+  .form-grid,
+  .booking-summary {
     grid-template-columns: 1fr;
   }
 
