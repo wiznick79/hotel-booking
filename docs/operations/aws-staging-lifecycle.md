@@ -83,14 +83,24 @@ Before teardown:
    after the host is gone, because the Elastic IP will be released.
 3. Ensure the local Terraform state is available. It is ignored by Git and identifies
    the existing managed resources.
-4. Review the destroy plan with the explicit bucket-deletion flag:
+4. While the full stack still exists, apply the explicit bucket-deletion setting.
+   This records the Terraform provider setting before any resource is removed:
 
    ```powershell
    cd infrastructure/aws/terraform
+   terraform apply -var='force_destroy_deployment_bucket=true'
+   ```
+
+   Review this apply carefully. It must not create or destroy infrastructure; it only
+   updates Terraform's recorded bucket behavior.
+
+5. Review the destroy plan:
+
+   ```powershell
    terraform plan -destroy -var='force_destroy_deployment_bucket=true'
    ```
 
-5. Only after confirming the final backup is safe, remove the stack:
+6. Only after confirming the final backup is safe, remove the stack:
 
    ```powershell
    terraform destroy -var='force_destroy_deployment_bucket=true'
@@ -98,7 +108,9 @@ Before teardown:
 
 `force_destroy_deployment_bucket` is intentionally false by default. The explicit
 teardown flag permanently removes every versioned release artifact and backup in the
-S3 bucket; without it, Terraform refuses to delete a non-empty bucket.
+S3 bucket; without it, Terraform refuses to delete a non-empty bucket. Supplying the
+flag only to `terraform destroy` is not enough because the provider reads the stored
+bucket setting; apply it first while the complete state still exists.
 
 Terraform does not manage the sensitive SSM parameters created separately. After
 the infrastructure destroy, delete the `/hotel-booking/staging/` parameters from
