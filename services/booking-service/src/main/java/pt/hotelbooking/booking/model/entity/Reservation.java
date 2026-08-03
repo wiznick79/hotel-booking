@@ -85,6 +85,32 @@ public class Reservation extends BookingBaseEntity {
         holdUntil = null;
     }
 
+    public void checkIn() {
+        if (status != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("Only confirmed reservations can be checked in.");
+        }
+
+        status = ReservationStatus.CHECKED_IN;
+    }
+
+    public void checkOut() {
+        if (status != ReservationStatus.CHECKED_IN) {
+            throw new IllegalStateException("Only checked-in reservations can be checked out.");
+        }
+
+        status = ReservationStatus.CHECKED_OUT;
+        revokeGuestAccess();
+    }
+
+    public void markNoShow() {
+        if (status != ReservationStatus.PENDING && status != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("Only pending or confirmed reservations can be marked as no-show.");
+        }
+
+        status = ReservationStatus.NO_SHOW;
+        revokeGuestAccess();
+    }
+
     public void expireHold() {
         if (status == ReservationStatus.HELD) {
             status = ReservationStatus.CANCELLED;

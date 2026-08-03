@@ -139,6 +139,27 @@ public class ReservationController {
         return reservationService.confirm(id, authentication.getName());
     }
 
+    @PatchMapping("/{id}/check-in")
+    @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
+    public ReservationResponse checkIn(@PathVariable UUID id, Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
+        return reservationService.checkIn(id, authentication.getName());
+    }
+
+    @PatchMapping("/{id}/check-out")
+    @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
+    public ReservationResponse checkOut(@PathVariable UUID id, Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
+        return reservationService.checkOut(id, authentication.getName());
+    }
+
+    @PatchMapping("/{id}/no-show")
+    @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
+    public ReservationResponse markNoShow(@PathVariable UUID id, Authentication authentication) {
+        requireStaffHotelAccess(id, authentication);
+        return reservationService.markNoShow(id, authentication.getName());
+    }
+
     @PatchMapping("/{id}/hold")
     @PreAuthorize("hasAuthority('RESERVATION_MANAGE')")
     public ReservationResponse placeHold(@PathVariable UUID id,

@@ -67,6 +67,9 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Initial reservation statuses are `PENDING`, `CONFIRMED`, `CANCELLED`, `CHECKED_IN`, `CHECKED_OUT`, and `NO_SHOW`.
 - Check-in and check-out are date-only business values; the checkout date is exclusive.
 - Hotel check-in/check-out hours are hotel configuration and are not part of the reservation date values.
+- Staff must be able to check in a confirmed guest during the booked stay, check out a checked-in guest, and mark an unarrived past reservation as a no-show. `CHECKED_OUT` is displayed as **Completed** in the management interface.
+- Staff must be able to view reservation details, including guest contact information, notes, payment and discount snapshots, and booked room-type/physical-room assignments.
+- Reservations whose checkout date has passed cannot be cancelled, confirmed, or reassigned. A past reservation that was never checked in must be resolved explicitly as a no-show rather than being automatically marked completed.
 - Guests may provide arrival details and special requests in a free-text notes field.
 - Guest name, phone number, and guest count are required for an unauthenticated booking.
 - Guest email is optional for unauthenticated bookings but recommended for confirmations and management information.
