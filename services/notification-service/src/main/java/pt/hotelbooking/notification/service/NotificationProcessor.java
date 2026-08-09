@@ -23,7 +23,7 @@ public class NotificationProcessor {
 
     private final EmailSender emailSender;
 
-    @Value("${public-frontend.base-url:http://localhost:3000}")
+    @Value("${public-frontend.base-url:http://localhost:3002}")
     private String publicFrontendBaseUrl;
 
     @Value("${notification.maximum-attempts:3}")
@@ -70,7 +70,7 @@ public class NotificationProcessor {
                 hotelId,
                 guestEmail,
                 subject,
-                "Hello " + guestName + ", your reservation at " + hotelNameForMessage + " is: " + eventType
+                "Hello " + guestName + ", " + messageFor(eventType) + " at " + hotelNameForMessage
                         + ". Stay: " + checkInDate + " to " + checkOutDate
                         + ". Total: " + totalPrice + " " + currency + "." + accessLink,
                 senderDisplayName, senderFromAddress, senderReplyToAddress));
@@ -83,6 +83,17 @@ public class NotificationProcessor {
             case "ReservationCancelled" -> "Hotel booking cancelled";
             case "ReservationHoldExpired" -> "Hotel booking hold expired";
             default -> "Hotel booking confirmation";
+        };
+    }
+
+    private String messageFor(String eventType) {
+        return switch (eventType) {
+            case "ReservationCreated" -> "we have received your booking request";
+            case "ReservationModified" -> "your booking has been updated";
+            case "ReservationConfirmed" -> "your booking is confirmed";
+            case "ReservationCancelled" -> "your booking has been cancelled";
+            case "ReservationHoldExpired" -> "your booking hold has expired";
+            default -> "there is an update to your booking";
         };
     }
 

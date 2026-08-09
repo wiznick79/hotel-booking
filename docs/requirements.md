@@ -73,7 +73,12 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Guests may provide arrival details and special requests in a free-text notes field.
 - Guest name, phone number, and guest count are required for an unauthenticated booking.
 - Guest email is optional for unauthenticated bookings but recommended for confirmations and management information.
+- A public booking must require affirmative acceptance of the privacy notice. The booking service records the
+  acceptance timestamp for operational auditability; the final notice wording, retention policy, and contact details
+  require review for the hotel’s real legal context.
 - A reservation can be created without payment when the hotel permits pay-later bookings.
+- Online payment must support credit/debit cards, PayPal, Multibanco references, and MB WAY. `PaymentMode`
+  distinguishes online payment from pay-at-reception; a separate `PaymentMethod` records the selected channel.
 - Staff must be able to manually confirm eligible pending or held reservations.
 - Temporary holds must expire automatically and release their rooms when their expiration time is reached.
 - Reservation prices are frozen when the reservation is created.
@@ -114,6 +119,8 @@ The main users are trusted owners and managers. Existing staff may continue usin
   5. System default language
 - The system default language is English.
 - Frontend interface translations are separate from hotel content translations.
+- The public site and admin panel initially support English and Portuguese interface text. The public site stores the
+  visitor’s interface choice locally and forwards it as `Accept-Language` when retrieving translated hotel content.
 
 ## Non-functional requirements
 
@@ -150,7 +157,7 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Kubernetes
 - Multi-region deployment
 - Event sourcing and CQRS
-- Complex payment workflows
+- Live payment-provider implementation, refunds, chargebacks, and reconciliation workflows
 - Full hotel accounting
 - Channel-manager integrations with booking platforms
 - Housekeeping and maintenance workflows
@@ -163,6 +170,7 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Seasonal pricing and minimum-stay rules.
 - Email provider selection.
 - Exact staff roles and permissions.
+- Payment provider selection and the legal/business rules for refunds, chargebacks, and payment reconciliation.
 
 ## Reservation policy decisions
 

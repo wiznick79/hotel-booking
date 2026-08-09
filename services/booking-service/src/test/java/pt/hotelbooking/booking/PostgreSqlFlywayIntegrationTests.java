@@ -63,6 +63,9 @@ class PostgreSqlFlywayIntegrationTests {
         assertThat(tableExists("booking_policies")).isTrue();
         assertThat(tableExists("discount_codes")).isTrue();
         assertThat(tableExists("outbox_events")).isTrue();
+        assertThat(columnExists("reservations", "privacy_notice_accepted")).isTrue();
+        assertThat(columnExists("reservations", "privacy_notice_accepted_at")).isTrue();
+        assertThat(columnExists("reservations", "payment_method")).isTrue();
     }
 
     @Test
@@ -96,6 +99,17 @@ class PostgreSqlFlywayIntegrationTests {
                 "select count(*) from information_schema.tables where table_schema = 'public' and table_name = ?",
                 Integer.class,
                 tableName);
+
+        return count != null && count == 1;
+    }
+
+    private boolean columnExists(String tableName, String columnName) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from information_schema.columns "
+                        + "where table_schema = 'public' and table_name = ? and column_name = ?",
+                Integer.class,
+                tableName,
+                columnName);
 
         return count != null && count == 1;
     }

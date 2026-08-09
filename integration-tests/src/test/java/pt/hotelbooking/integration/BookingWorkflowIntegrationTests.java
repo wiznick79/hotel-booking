@@ -110,8 +110,10 @@ class BookingWorkflowIntegrationTests {
                             LocalDate.now().plusDays(12),
                             null,
                             List.of(room.roomTypeId().toString()),
-                            PaymentMode.PAY_AT_RECEPTION,
-                            null));
+                PaymentMode.PAY_AT_RECEPTION,
+                null,
+                null,
+                true));
 
             OutboxEventRepository outboxEvents = bookingContext.getBean(OutboxEventRepository.class);
             assertThat(outboxEvents.count()).isEqualTo(1);

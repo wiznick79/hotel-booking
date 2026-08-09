@@ -110,6 +110,17 @@ article,
   padding: 3rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-actions select {
+  width: auto;
+  background: #fff;
+}
+
 .booking-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -190,6 +201,22 @@ textarea {
 
 .success {
   color: #087443;
+}
+
+.booking-card .consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-weight: normal;
+}
+
+.consent input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+
+.consent a {
+  color: #876d3c;
 }
 
 .muted {

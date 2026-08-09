@@ -29,6 +29,10 @@ public class Reservation extends BookingBaseEntity {
     private LocalDate checkOutDate;
     private String notes;
 
+    private boolean privacyNoticeAccepted;
+
+    private Instant privacyNoticeAcceptedAt;
+
     private BigDecimal totalPrice;
 
     private String currency;
@@ -39,6 +43,9 @@ public class Reservation extends BookingBaseEntity {
 
     @Enumerated(EnumType.STRING)
     private PaymentMode paymentMode = PaymentMode.PAY_AT_RECEPTION;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod = PaymentMethod.PAY_AT_RECEPTION;
 
     private boolean manualConfirmationRequired;
 
@@ -66,6 +73,11 @@ public class Reservation extends BookingBaseEntity {
 
     public void assignCustomer(String customerUsername) {
         this.customerUsername = customerUsername;
+    }
+
+    public void recordPrivacyNoticeAcceptance() {
+        privacyNoticeAccepted = true;
+        privacyNoticeAcceptedAt = Instant.now();
     }
 
     public void addRoomType(String roomTypeId) {
@@ -129,8 +141,10 @@ public class Reservation extends BookingBaseEntity {
         this.discountAmount = discountAmount;
     }
 
-    public void configurePayment(PaymentMode paymentMode, boolean manualConfirmationRequired) {
+    public void configurePayment(PaymentMode paymentMode, PaymentMethod paymentMethod,
+                                 boolean manualConfirmationRequired) {
         this.paymentMode = paymentMode;
+        this.paymentMethod = paymentMethod;
         this.manualConfirmationRequired = manualConfirmationRequired;
     }
 

@@ -2,33 +2,37 @@ import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Hotel } from '../api/hotelApi';
 import { useAuth } from '../auth/useAuth';
+import { adminLanguages, translateAdmin, type AdminLanguage } from '../i18n';
 
 type AppLayoutProps = {
   children: ReactNode;
   selectedHotelId: string;
   onHotelChange: (hotelId: string) => void;
   hotels: Hotel[];
+  language: AdminLanguage;
+  onLanguageChange: (language: AdminLanguage) => void;
 };
 
 type NavigationItem = {
-  label: string;
+  labelKey: Parameters<typeof translateAdmin>[1];
   to: string;
   permission?: string;
 };
 
 const navigationItems: NavigationItem[] = [
-  { label: 'Dashboard', to: '/' },
-  { label: 'Reservations', to: '/reservations', permission: 'RESERVATION_READ' },
-  { label: 'Rooms', to: '/rooms', permission: 'ROOM_READ' },
-  { label: 'Room types', to: '/room-types', permission: 'ROOM_TYPE_MANAGE' },
-  { label: 'Rates', to: '/rates', permission: 'RATE_PERIOD_MANAGE' },
-  { label: 'Discount codes', to: '/discount-codes', permission: 'DISCOUNT_CODE_MANAGE' },
-  { label: 'Hotel settings', to: '/hotel-settings', permission: 'HOTEL_MANAGE' },
-  { label: 'Users', to: '/users', permission: 'STAFF_MANAGE' },
+  { labelKey: 'dashboard', to: '/' },
+  { labelKey: 'reservations', to: '/reservations', permission: 'RESERVATION_READ' },
+  { labelKey: 'rooms', to: '/rooms', permission: 'ROOM_READ' },
+  { labelKey: 'roomTypes', to: '/room-types', permission: 'ROOM_TYPE_MANAGE' },
+  { labelKey: 'rates', to: '/rates', permission: 'RATE_PERIOD_MANAGE' },
+  { labelKey: 'discountCodes', to: '/discount-codes', permission: 'DISCOUNT_CODE_MANAGE' },
+  { labelKey: 'hotelSettings', to: '/hotel-settings', permission: 'HOTEL_MANAGE' },
+  { labelKey: 'users', to: '/users', permission: 'STAFF_MANAGE' },
 ];
 
-export function AppLayout({ children, selectedHotelId, onHotelChange, hotels }: AppLayoutProps) {
+export function AppLayout({ children, selectedHotelId, onHotelChange, hotels, language, onLanguageChange }: AppLayoutProps) {
   const { logout, session } = useAuth();
+  const t = (key: Parameters<typeof translateAdmin>[1]) => translateAdmin(language, key);
 
   const visibleItems = useMemo(
     () => navigationItems.filter((item) => !item.permission || session?.claims.permissions.includes(item.permission)),
@@ -50,7 +54,7 @@ export function AppLayout({ children, selectedHotelId, onHotelChange, hotels }: 
 
         <nav aria-label="Main navigation">
           {visibleItems.map((item) => (
-            <a key={item.to} href={`#${item.to}`}>{item.label}</a>
+            <a key={item.to} href={`#${item.to}`}>{t(item.labelKey)}</a>
           ))}
         </nav>
       </aside>
@@ -58,9 +62,9 @@ export function AppLayout({ children, selectedHotelId, onHotelChange, hotels }: 
       <div className="main-content">
         <header className="topbar">
           <label>
-            <span className="visually-hidden">Selected hotel</span>
+            <span className="visually-hidden">{t('selectedHotel')}</span>
             <select value={selectedHotelId} onChange={(event) => onHotelChange(event.target.value)}>
-              {session?.claims.hotelIds.length === 0 && <option value="">No hotel assigned</option>}
+              {session?.claims.hotelIds.length === 0 && <option value="">{t('noHotelAssigned')}</option>}
               {session?.claims.hotelIds.map((hotelId) => {
                 const hotel = hotels.find((candidate) => candidate.id === hotelId);
 
@@ -74,9 +78,12 @@ export function AppLayout({ children, selectedHotelId, onHotelChange, hotels }: 
           </label>
 
           <div className="user-menu">
+            <select aria-label="Language" onChange={(event) => onLanguageChange(event.target.value as AdminLanguage)} value={language}>
+              {adminLanguages.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
+            </select>
             <span>{session?.claims.sub}</span>
-            <a className="text-button" href="#/change-password">Change password</a>
-            <button type="button" className="text-button" onClick={handleLogout}>Log out</button>
+            <a className="text-button" href="#/change-password">{t('changePassword')}</a>
+            <button type="button" className="text-button" onClick={handleLogout}>{t('logOut')}</button>
           </div>
         </header>
 

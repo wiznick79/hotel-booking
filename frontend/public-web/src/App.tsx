@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import heroImage from './assets/hotel-hero.png';
+import { publicLanguages, translate, type PublicLanguage } from './i18n';
 
 type Hotel = {
   id: string;
@@ -53,10 +54,13 @@ export function App() {
   const [path, setPath] = useState(readPath());
   const [loadError, setLoadError] = useState('');
   const [createdReservation, setCreatedReservation] = useState<Reservation | null>(null);
+  const [language, setLanguage] = useState<PublicLanguage>(readLanguage);
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
+    translate(language, key, values);
 
   useEffect(() => {
-    void loadHotelData();
-  }, []);
+    void loadHotelData(language);
+  }, [language]);
 
   useEffect(() => {
     const handleHashChange = () => setPath(readPath());
@@ -66,11 +70,11 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  async function loadHotelData() {
+  async function loadHotelData(selectedLanguage: PublicLanguage) {
     try {
       const [hotels, roomTypes] = await Promise.all([
-        get<Hotel[]>('/hotels'),
-        get<RoomType[]>('/room-types'),
+        get<Hotel[]>('/hotels', selectedLanguage),
+        get<RoomType[]>('/room-types', selectedLanguage),
       ]);
       const selectedHotel = hotels[0] ?? null;
 
@@ -95,6 +99,11 @@ export function App() {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }
 
+  function changeLanguage(nextLanguage: PublicLanguage) {
+    localStorage.setItem('hotel-booking.public-language', nextLanguage);
+    setLanguage(nextLanguage);
+  }
+
   const guestAccessToken = readGuestAccessToken(path);
 
   return (
@@ -103,23 +112,37 @@ export function App() {
         <button className="hotel-title" onClick={returnHome} type="button">
           {hotel?.name ?? 'Hotel Booking'}
         </button>
-        <button onClick={openBooking} type="button">Book now</button>
+        <div className="header-actions">
+          <select aria-label="Language" onChange={(event) => changeLanguage(event.target.value as PublicLanguage)} value={language}>
+            {publicLanguages.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
+          </select>
+          <button onClick={openBooking} type="button">{t('bookNow')}</button>
+        </div>
       </header>
 
       <main>
         {loadError && <p className="error">{loadError}</p>}
         {guestAccessToken ? (
-          <GuestBooking hotel={hotel} roomTypes={types} token={guestAccessToken} onReturnHome={returnHome} />
+          <GuestBooking
+            hotel={hotel}
+            roomTypes={types}
+            token={guestAccessToken}
+            onReturnHome={returnHome}
+            language={language}
+          />
         ) : path === '/confirmation' ? (
           <BookingConfirmation
             hotel={hotel}
             reservation={createdReservation}
             onReturnHome={returnHome}
+            language={language}
           />
         ) : path === '/book' ? (
-          <Booking hotel={hotel} onBack={returnHome} onSuccess={showConfirmation} />
+          <Booking hotel={hotel} onBack={returnHome} onSuccess={showConfirmation} language={language} />
+        ) : path === '/privacy' ? (
+          <PrivacyNotice onReturnHome={returnHome} language={language} />
         ) : (
-          <Landing hotel={hotel} types={types} onBook={openBooking} />
+          <Landing hotel={hotel} types={types} onBook={openBooking} language={language} />
         )}
       </main>
     </>
@@ -130,9 +153,13 @@ type LandingProps = {
   hotel: Hotel | null;
   types: RoomType[];
   onBook: () => void;
+  language: PublicLanguage;
 };
 
-function Landing({ hotel, types, onBook }: LandingProps) {
+function Landing({ hotel, types, onBook, language }: LandingProps) {
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
+    translate(language, key, values);
+
   return (
     <>
       <section
@@ -142,25 +169,25 @@ function Landing({ hotel, types, onBook }: LandingProps) {
         }}
       >
         <div>
-          <p className="eyebrow">Welcome to Portugal</p>
+          <p className="eyebrow">{t('welcome')}</p>
           <h1>{hotel?.name ?? 'Your stay starts here'}</h1>
           <p>
             {hotel?.description
               || 'Peaceful hospitality, thoughtful comfort, and an easy stay.'}
           </p>
-          <button onClick={onBook} type="button">Reserve your stay</button>
+          <button onClick={onBook} type="button">{t('reserveStay')}</button>
         </div>
       </section>
 
       <section className="section">
-        <p className="eyebrow">Stay your way</p>
-        <h2>Rooms made for rest</h2>
+        <p className="eyebrow">{t('stayYourWay')}</p>
+        <h2>{t('roomsMadeForRest')}</h2>
         <div className="cards">
           {types.map((type) => (
             <article key={type.id}>
               <span>From €{type.basePrice.toFixed(0)} / night</span>
               <h3>{type.name}</h3>
-              <p>Comfortably sleeps up to {type.maximumOccupancy} guests.</p>
+              <p>{t('sleepsUpTo', { count: type.maximumOccupancy })}</p>
             </article>
           ))}
         </div>
@@ -173,9 +200,12 @@ type BookingProps = {
   hotel: Hotel | null;
   onBack: () => void;
   onSuccess: (reservation: Reservation) => void;
+  language: PublicLanguage;
 };
 
-function Booking({ hotel, onBack, onSuccess }: BookingProps) {
+function Booking({ hotel, onBack, onSuccess, language }: BookingProps) {
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
+    translate(language, key, values);
   const [roomTypeId, setRoomTypeId] = useState('');
   const [checkInDate, setCheckInDate] = useState(dateAfter(1));
   const [checkOutDate, setCheckOutDate] = useState(dateAfter(2));
@@ -210,7 +240,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
           checkOutDate,
           guestCount: String(guestCount),
         });
-        const response = await get<AvailableRoomType[]>(`/reservations/availability?${parameters}`);
+        const response = await get<AvailableRoomType[]>(`/reservations/availability?${parameters}`, language);
 
         if (!cancelled) {
           setAvailableRoomTypes(response);
@@ -237,7 +267,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
     return () => {
       cancelled = true;
     };
-  }, [checkInDate, checkOutDate, guestCount, hotel]);
+  }, [checkInDate, checkOutDate, guestCount, hotel, language]);
 
   const selectedRoomType = useMemo(
     () => availableRoomTypes.find((roomType) => roomType.roomTypeId === roomTypeId) ?? null,
@@ -263,7 +293,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
     try {
       const response = await fetch(`${api}/reservations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept-Language': language },
         body: JSON.stringify({
           hotelId: hotel.id,
           guestName: name,
@@ -275,6 +305,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
           notes: notes || undefined,
           roomTypeIds: [selectedRoomType.roomTypeId],
           paymentMode: 'PAY_AT_RECEPTION',
+          privacyNoticeAccepted: true,
         }),
       });
 
@@ -293,15 +324,17 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
 
   return (
     <form className="booking-card" onSubmit={submit}>
-      <button className="link" onClick={onBack} type="button">Back to hotel</button>
-      <h2>Book your stay</h2>
+      <button className="link" onClick={onBack} type="button">{t('backToHotel')}</button>
+      <h2>{t('bookYourStay')}</h2>
       <p className="booking-intro">
-        {hotel ? `Choose your dates for ${hotel.name} and see the available options.` : 'Choose your dates and see available options.'}
+        {hotel
+          ? t('bookingIntro', { hotelName: hotel.name })
+          : t('bookingIntroGeneric')}
       </p>
 
       <div className="form-grid">
         <label>
-          Check-in
+          {t('checkIn')}
           <input
             min={dateAfter(1)}
             onChange={(event) => setCheckInDate(event.target.value)}
@@ -311,7 +344,7 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
           />
         </label>
         <label>
-          Check-out
+          {t('checkOut')}
           <input
             min={checkInDate || dateAfter(1)}
             onChange={(event) => setCheckOutDate(event.target.value)}
@@ -323,18 +356,18 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
       </div>
 
       <label>
-        Number of guests
+        {t('guests')}
         <select onChange={(event) => setGuestCount(Number(event.target.value))} value={guestCount}>
           {[1, 2, 3, 4, 5, 6].map((count) => (
             <option key={count} value={count}>
-              {count} {count === 1 ? 'guest' : 'guests'}
+              {count} {count === 1 ? t('guest') : t('guestsPlural')}
             </option>
           ))}
         </select>
       </label>
 
       <label>
-        Available room type
+        {t('availableRoomType')}
         <select
           disabled={isSearching || availableRoomTypes.length === 0}
           onChange={(event) => setRoomTypeId(event.target.value)}
@@ -343,10 +376,10 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
         >
           <option value="">
             {isSearching
-              ? 'Checking availability...'
+              ? t('checkingAvailability')
               : availableRoomTypes.length
-                ? 'Choose a room type'
-                : 'No available room type for these dates'}
+                ? t('chooseRoomType')
+                : t('noRoomTypes')}
           </option>
           {availableRoomTypes.map((roomType) => (
             <option key={roomType.roomTypeId} value={roomType.roomTypeId}>
@@ -364,28 +397,35 @@ function Booking({ hotel, onBack, onSuccess }: BookingProps) {
       {searchError && <p className="error">{searchError}</p>}
 
       <label>
-        Full name
+        {t('fullName')}
         <input autoComplete="name" onChange={(event) => setName(event.target.value)} required value={name} />
       </label>
 
       <label>
-        Phone
+        {t('phone')}
         <input autoComplete="tel" onChange={(event) => setPhone(event.target.value)} required type="tel" value={phone} />
       </label>
 
       <label>
-        Email <span className="optional">(recommended)</span>
+        {t('email')} <span className="optional">{t('recommended')}</span>
         <input autoComplete="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} />
       </label>
 
       <label>
-        Notes <span className="optional">(optional)</span>
+        {t('notes')} <span className="optional">{t('optional')}</span>
         <textarea
           onChange={(event) => setNotes(event.target.value)}
           placeholder="For example, your expected arrival time."
           rows={4}
           value={notes}
         />
+      </label>
+
+      <label className="consent">
+        <input required type="checkbox" />
+        <span>
+          {t('privacyNotice')} <a href="#/privacy">{t('privacy')}</a>
+        </span>
       </label>
 
       {message && <p className="error">{message}</p>}
@@ -400,13 +440,17 @@ type BookingConfirmationProps = {
   hotel: Hotel | null;
   reservation: Reservation | null;
   onReturnHome: () => void;
+  language: PublicLanguage;
 };
 
-function BookingConfirmation({ hotel, reservation, onReturnHome }: BookingConfirmationProps) {
+function BookingConfirmation({ hotel, reservation, onReturnHome, language }: BookingConfirmationProps) {
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
+    translate(language, key, values);
+
   return (
     <section className="booking-confirmation">
-      <p className="eyebrow">Request received</p>
-      <h1>Thank you for your booking request.</h1>
+      <p className="eyebrow">{t('requestReceived')}</p>
+      <h1>{t('bookingThankYou')}</h1>
       <p>
         {hotel
           ? `${hotel.name} will review your request and contact you shortly.`
@@ -432,7 +476,29 @@ function BookingConfirmation({ hotel, reservation, onReturnHome }: BookingConfir
         If you provided an email address, we will send your booking details and a secure link
         to view this reservation.
       </p>
-      <button onClick={onReturnHome} type="button">Return to hotel</button>
+      <button onClick={onReturnHome} type="button">{t('returnToHotel')}</button>
+    </section>
+  );
+}
+
+type PrivacyNoticeProps = {
+  onReturnHome: () => void;
+  language: PublicLanguage;
+};
+
+function PrivacyNotice({ onReturnHome, language }: PrivacyNoticeProps) {
+  const t = (key: Parameters<typeof translate>[1]) => translate(language, key);
+
+  return (
+    <section className="booking-confirmation">
+      <p className="eyebrow">{t('privacy')}</p>
+      <h1>{t('privacyTitle')}</h1>
+      <p>{t('privacyBody')}</p>
+      <p className="muted">
+        This project provides a practical privacy baseline. The final notice, retention periods,
+        and contact details must be reviewed for the hotel&apos;s real operating context.
+      </p>
+      <button onClick={onReturnHome} type="button">{t('returnToHotel')}</button>
     </section>
   );
 }
@@ -442,9 +508,12 @@ type GuestBookingProps = {
   roomTypes: RoomType[];
   token: string;
   onReturnHome: () => void;
+  language: PublicLanguage;
 };
 
-function GuestBooking({ hotel, roomTypes, token, onReturnHome }: GuestBookingProps) {
+function GuestBooking({ hotel, roomTypes, token, onReturnHome, language }: GuestBookingProps) {
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
+    translate(language, key, values);
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loadError, setLoadError] = useState('');
 
@@ -479,7 +548,7 @@ function GuestBooking({ hotel, roomTypes, token, onReturnHome }: GuestBookingPro
         <h1>We could not open this booking.</h1>
         <p className="error">{loadError}</p>
         <p>Please contact the hotel if you need help with an existing reservation.</p>
-        <button onClick={onReturnHome} type="button">Return to hotel</button>
+        <button onClick={onReturnHome} type="button">{t('returnToHotel')}</button>
       </section>
     );
   }
@@ -530,13 +599,15 @@ function GuestBooking({ hotel, roomTypes, token, onReturnHome }: GuestBookingPro
         <p>Your booking request requires confirmation from the hotel.</p>
       )}
       <p className="muted">To change or cancel this booking, please contact the hotel directly.</p>
-      <button onClick={onReturnHome} type="button">Return to hotel</button>
+      <button onClick={onReturnHome} type="button">{t('returnToHotel')}</button>
     </section>
   );
 }
 
-async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`${api}${path}`);
+async function get<T>(path: string, language?: PublicLanguage): Promise<T> {
+  const response = await fetch(`${api}${path}`, {
+    headers: language ? { 'Accept-Language': language } : undefined,
+  });
 
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
@@ -575,6 +646,10 @@ function dateAfter(days: number) {
 
 function readPath() {
   return window.location.hash.replace(/^#/, '') || '/';
+}
+
+function readLanguage(): PublicLanguage {
+  return localStorage.getItem('hotel-booking.public-language') === 'pt' ? 'pt' : 'en';
 }
 
 function readGuestAccessToken(path: string) {

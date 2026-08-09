@@ -14,6 +14,8 @@ import pt.hotelbooking.booking.repository.AuditLogRepository;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
 import pt.hotelbooking.booking.integration.HotelCatalogClient;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
+import pt.hotelbooking.booking.model.entity.PaymentMethod;
+import pt.hotelbooking.booking.model.entity.PaymentMode;
 import pt.hotelbooking.booking.exception.ReservationNotFoundException;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
 import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
@@ -352,12 +354,15 @@ public class ReservationService {
         BigDecimal totalPrice = validateAndQuoteRoomTypes(request.hotelId(), request.roomTypeIds(),
                 request.guestCount(), request.checkInDate(), request.checkOutDate());
 
+        PaymentMethod paymentMethod = resolvePaymentMethod(request);
+        PaymentMode paymentMode = resolvePaymentMode(request, paymentMethod);
+
         BookingPolicy policy = policyRepo.findByHotelId(request.hotelId()).orElse(null);
-        if (request.paymentMode() == pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
+        if (paymentMode == PaymentMode.PAY_AT_RECEPTION
                 && policy != null && !policy.isPayLaterAllowed()) {
             throw new IllegalStateException("This hotel requires payment before booking confirmation.");
         }
-        if (request.paymentMode() == pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
+        if (paymentMode == PaymentMode.PAY_AT_RECEPTION
                 && policy != null && policy.getMaxUnconfirmedBookings() > 0
                 && reservationRepo.countByHotelIdAndStatusIn(request.hotelId(),
                 List.of(ReservationStatus.PENDING, ReservationStatus.HELD)) >= policy.getMaxUnconfirmedBookings()) {
@@ -366,6 +371,7 @@ public class ReservationService {
 
         Reservation reservation = new Reservation(request.hotelId(), request.guestName(), request.guestPhone(),
                 request.guestEmail(), request.guestCount(), request.checkInDate(), request.checkOutDate(), request.notes());
+        reservation.recordPrivacyNoticeAcceptance();
         if (customerUsername != null) {
             reservation.assignCustomer(customerUsername);
         }
@@ -376,10 +382,7 @@ public class ReservationService {
                 request.checkOutDate());
         reservation.configureGuestAccess(guestAccessToken.hash(), guestAccessToken.expiresAt());
 
-        pt.hotelbooking.booking.model.entity.PaymentMode paymentMode = request.paymentMode() == null
-                ? pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
-                : request.paymentMode();
-        reservation.configurePayment(paymentMode, paymentMode != pt.hotelbooking.booking.model.entity.PaymentMode.PAY_NOW);
+        reservation.configurePayment(paymentMode, paymentMethod, paymentMode != PaymentMode.PAY_NOW);
         reservation.applyPriceSnapshot(totalPrice, "EUR");
 
         DiscountCodeService.DiscountResult discount = discountCodeService.apply(
@@ -561,6 +564,30 @@ public class ReservationService {
     private List<ReservationStatus> blockingStatuses() {
         return List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
+    }
+
+    private PaymentMethod resolvePaymentMethod(ReservationRequest request) {
+        PaymentMethod paymentMethod = request.paymentMethod() == null
+                ? PaymentMethod.PAY_AT_RECEPTION
+                : request.paymentMethod();
+
+        if (request.paymentMode() == PaymentMode.PAY_AT_RECEPTION && paymentMethod.requiresOnlineProvider()) {
+            throw new IllegalArgumentException("An online payment method requires PAY_NOW.");
+        }
+
+        return paymentMethod;
+    }
+
+    private PaymentMode resolvePaymentMode(ReservationRequest request, PaymentMethod paymentMethod) {
+        PaymentMode paymentMode = request.paymentMode() == null
+                ? paymentMethod.requiresOnlineProvider() ? PaymentMode.PAY_NOW : PaymentMode.PAY_AT_RECEPTION
+                : request.paymentMode();
+
+        if (paymentMode == PaymentMode.PAY_NOW && !paymentMethod.requiresOnlineProvider()) {
+            throw new IllegalArgumentException("PAY_NOW requires an online payment method.");
+        }
+
+        return paymentMode;
     }
 
     private boolean hasAvailableRoomTypeCapacity(

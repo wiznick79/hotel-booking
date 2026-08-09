@@ -3,6 +3,7 @@ package pt.hotelbooking.booking.model.dto;
 import pt.hotelbooking.booking.model.entity.Reservation;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
 import pt.hotelbooking.booking.model.entity.PaymentMode;
+import pt.hotelbooking.booking.model.entity.PaymentMethod;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.util.List;
@@ -13,7 +14,7 @@ public record ReservationResponse(UUID id, String hotelId, String guestName, Str
                                   String guestEmail, int guestCount, LocalDate checkInDate,
                                   LocalDate checkOutDate, String notes, ReservationStatus status,
                                   List<ReservationItemResponse> items, BigDecimal totalPrice, String currency,
-                                  PaymentMode paymentMode, boolean manualConfirmationRequired,
+                                  PaymentMode paymentMode, PaymentMethod paymentMethod, boolean manualConfirmationRequired,
                                   Instant holdUntil, String discountCode, BigDecimal discountAmount) {
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(reservation.getId(), reservation.getHotelId(), reservation.getGuestName(),
@@ -21,7 +22,7 @@ public record ReservationResponse(UUID id, String hotelId, String guestName, Str
                 reservation.getCheckInDate(), reservation.getCheckOutDate(), reservation.getNotes(),
                 reservation.getStatus(), reservation.getItems().stream().map(ReservationItemResponse::from).toList(),
                 reservation.getTotalPrice(), reservation.getCurrency(), reservation.getPaymentMode(),
-                reservation.isManualConfirmationRequired(), reservation.getHoldUntil(),
+                reservation.getPaymentMethod(), reservation.isManualConfirmationRequired(), reservation.getHoldUntil(),
                 reservation.getDiscountCode(), reservation.getDiscountAmount());
     }
 }

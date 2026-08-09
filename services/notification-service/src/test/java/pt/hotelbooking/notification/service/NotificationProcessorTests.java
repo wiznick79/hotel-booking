@@ -49,7 +49,9 @@ class NotificationProcessorTests {
         verify(notificationRepository).save(argThat(notification ->
                 notification.getSenderDisplayName().equals("Hotel Morgadinha")
                         && notification.getSenderFromAddress().equals("morgadinha@wiznick.net")
-                        && notification.getSenderReplyToAddress().equals("reservas@hotelmorgadinha.pt")));
+                        && notification.getSenderReplyToAddress().equals("reservas@hotelmorgadinha.pt")
+                        && notification.getBody().contains("we have received your booking request")
+                        && !notification.getBody().contains("ReservationCreated")));
     }
 
     @Test

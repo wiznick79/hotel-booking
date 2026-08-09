@@ -108,6 +108,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .login-page { align-items: center; background: linear-gradient(135deg, #f5f6f8 0%, #e6ebed 100%); display: flex; justify-content: center; min-height: 100vh; padding: 1.5rem; }
 .login-card { background: #fff; border: 1px solid #e1e5e8; border-radius: .85rem; box-shadow: 0 1rem 3rem rgb(20 37 47 / 10%); max-width: 25rem; padding: 2rem; text-align: center; width: 100%; }
 .login-card .brand-mark { margin-bottom: 1.25rem; }
+.login-language { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; float: right; padding: .4rem; }
 .login-card form { display: grid; gap: 1rem; margin-top: 1.75rem; text-align: left; }
 .login-card label { display: grid; font-size: .9rem; font-weight: 650; gap: .45rem; }
 .login-card input { border: 1px solid #c9d2d8; border-radius: .4rem; padding: .7rem; }
