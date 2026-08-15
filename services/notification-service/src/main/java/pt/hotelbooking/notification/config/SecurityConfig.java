@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -26,9 +27,12 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/actuator/health",
                         "/actuator/prometheus",
+                        "/error",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")
+                .permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/contact-messages")
                 .permitAll()
                 .anyRequest()
                 .authenticated())

@@ -8,6 +8,7 @@ import java.util.UUID;
 public record UserResponse(
         Long id,
         String username,
+        String fullName,
         boolean enabled,
         Set<String> roles,
         Set<UUID> hotelIds) {
@@ -20,6 +21,7 @@ public record UserResponse(
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
+                user.getFullName(),
                 user.isEnabled(),
                 roleNames,
                 user.getHotelIds());

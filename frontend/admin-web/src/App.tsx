@@ -14,6 +14,7 @@ import { DiscountCodesPage } from './pages/DiscountCodesPage';
 import { HotelSettingsPage } from './pages/HotelSettingsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { ContactMessagesPage } from './pages/ContactMessagesPage';
 import { readAdminLanguage, type AdminLanguage } from './i18n';
 
 function App() {
@@ -73,7 +74,10 @@ function App() {
     '/rates': <RatesPage hotelId={selectedHotelId} />,
     '/discount-codes': <DiscountCodesPage hotelId={selectedHotelId} />,
     '/hotel-settings': <HotelSettingsPage hotelId={selectedHotelId} />,
-    '/users': <UsersPage selectedHotelId={selectedHotelId} />,
+    '/staff': <UsersPage category="staff" selectedHotelId={selectedHotelId} />,
+    '/customers': <UsersPage category="customers" selectedHotelId={selectedHotelId} />,
+    '/contact-messages': <ContactMessagesPage hotelId={selectedHotelId} language={language} />,
+    '/users': <UsersPage category="staff" selectedHotelId={selectedHotelId} />,
     '/change-password': <ChangePasswordPage />,
   };
 

@@ -48,6 +48,7 @@ flowchart LR
 
     Booking -->|synchronous catalogue and availability calls| Hotel
     Booking -->|transactional outbox events| Kafka
+    Identity -->|transactional outbox events| Kafka
     Kafka --> Notification
     Notification --> Mailpit
 
@@ -64,10 +65,10 @@ flowchart LR
 | Component | Responsibility | Owns |
 |---|---|---|
 | **API Gateway** | Single API entry point, routing, CORS, correlation IDs, Redis-backed rate limits, and aggregated Swagger UI in development. | No business data. |
-| **Identity Service** | Staff/customer identities, roles, permissions, assigned hotels, login, refresh tokens, and JWT issue/validation. | `identity_service` database. |
+| **Identity Service** | Staff/customer identities, roles, permissions, assigned hotels, login, refresh tokens, customer email verification, JWT issue/validation, and its own outbox. | `identity_service` database. |
 | **Hotel Service** | Hotels, translated room types, physical rooms, rates, booking policies, and dated room-unavailability blocks. | `hotel_service` database. |
 | **Booking Service** | Public availability search, reservation lifecycle, pricing snapshots, room-type capacity validation, automatic physical-room assignment, reassignment validation, guest links, discount codes, and outbox events. | `booking_service` database. |
-| **Notification Service** | Consumes reservation events and sends notifications through the `EmailSender` abstraction. | `notification_service` database. |
+| **Notification Service** | Consumes reservation and identity events and sends notifications through the `EmailSender` abstraction. | `notification_service` database. |
 
 Each service owns its database. Services never read or write another service's schema directly.
 
@@ -106,6 +107,19 @@ Both frontends have production Docker images: a Node build stage creates static 
 
 The transactional outbox avoids the classic failure mode where a reservation commits but its notification event is lost.
 
+### Optional customer account registration
+
+1. A guest can register from the public website, but booking without an account remains supported.
+2. Identity-service stores the customer's full name and email sign-in identifier, creates a disabled `CUSTOMER`
+   identity, stores only a SHA-256 hash of a random, 24-hour verification token, and writes a customer-registration
+   event to its outbox in the same transaction. Authenticated customers can update their name through the public
+   account area.
+3. The outbox dispatcher publishes the event to Kafka's `identity-events` topic. Its token payload is AES-GCM encrypted; the raw verification token is neither persisted nor logged.
+4. Notification-service decrypts the token only to create the verification email. The link opens the public site's `#/verify-account` route.
+5. Verification enables the identity, consumes the token, and issues a short-lived JWT plus an HTTP-only refresh-token cookie. The public site can silently refresh the JWT after a page reload, so a valid session does not require another password prompt.
+
+Both reservation and identity topics have dead-letter topics for unprocessable messages. Notification records are idempotent by event reference and subject, preventing duplicate registration emails during at-least-once Kafka delivery.
+
 ## Data and persistence
 
 - **PostgreSQL 17** runs as one local/staging container with four separate databases: `identity_service`, `hotel_service`, `booking_service`, and `notification_service`.
@@ -120,6 +134,7 @@ The transactional outbox avoids the classic failure mode where a reservation com
 - Local and CI environments generate disposable RSA key pairs. Staging stores the private key as an AWS Systems Manager `SecureString` and the public key as a `String`; neither key is committed to Git.
 - Authorisation is permission-based; hotel-scoped operations additionally verify that a staff user is assigned to the target hotel.
 - Guests can book without an account. Guest access links use cryptographically random tokens stored only as hashes and expire after checkout plus a configured grace period.
+- Customer account verification links are single-use, time-limited, and stored only as hashes. Their cross-service event payload is encrypted with a shared account-verification key; that key is a runtime secret, never a Git value.
 - Public write endpoints have Redis-backed, IP-keyed gateway rate limits.
 - Caddy is the only public staging entry point. It terminates HTTPS, redirects HTTP, adds security headers, strips spoofed forwarded headers, and proxies `/api/*` to the gateway.
 - Secrets are not committed. Local Compose defaults are development-only; staging runtime values are retrieved from AWS Systems Manager Parameter Store.

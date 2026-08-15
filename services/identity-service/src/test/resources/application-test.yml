@@ -9,3 +9,10 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  kafka:
+    admin:
+      fail-fast: false
+
+identity-events:
+  topics:
+    auto-create: false

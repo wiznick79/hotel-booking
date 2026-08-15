@@ -1,16 +1,15 @@
 package pt.hotelbooking.booking.model.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.math.BigDecimal;
-import java.time.Duration;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
 
 @Entity

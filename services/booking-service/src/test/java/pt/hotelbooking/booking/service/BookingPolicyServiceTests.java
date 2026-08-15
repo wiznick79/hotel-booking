@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pt.hotelbooking.booking.model.dto.BookingPolicyRequest;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
+import pt.hotelbooking.booking.payment.PaymentProviderRegistry;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -20,6 +21,9 @@ class BookingPolicyServiceTests {
 
     @Mock
     private BookingPolicyRepository policyRepository;
+
+    @Mock
+    private PaymentProviderRegistry paymentProviderRegistry;
 
     @InjectMocks
     private BookingPolicyService service;

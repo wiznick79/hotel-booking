@@ -451,7 +451,10 @@ export function ReservationsPage({ hotelId }: ReservationsPageProps) {
                 <div><dt>Guests</dt><dd>{selectedReservation.guestCount}</dd></div>
                 <div><dt>Phone</dt><dd>{selectedReservation.guestPhone}</dd></div>
                 <div><dt>Email</dt><dd>{selectedReservation.guestEmail ?? 'Not provided'}</dd></div>
-                <div><dt>Payment</dt><dd>{formatPaymentMode(selectedReservation.paymentMode)}</dd></div>
+                <div>
+                  <dt>Payment</dt>
+                  <dd>{formatPayment(selectedReservation)}</dd>
+                </div>
                 <div><dt>Total</dt><dd>{formatPrice(selectedReservation.totalPrice, selectedReservation.currency)}</dd></div>
                 <div><dt>Discount</dt><dd>{selectedReservation.discountCode ?? 'None'}</dd></div>
                 <div><dt>Confirmation</dt><dd>{selectedReservation.manualConfirmationRequired ? 'Manual confirmation required' : 'Not required'}</dd></div>
@@ -554,6 +557,40 @@ function formatStatus(status: string) {
 
 function formatPaymentMode(paymentMode: string) {
   return paymentMode.replace('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPayment(reservation: Reservation) {
+  if (reservation.paymentMode === 'PAY_AT_RECEPTION') {
+    return 'Pay at reception';
+  }
+
+  const method = formatPaymentMethod(reservation.paymentMethod);
+  const status = paymentStatusLabel(reservation.paymentStatus);
+
+  return `${status} · ${method}`;
+}
+
+function paymentStatusLabel(paymentStatus: string | null) {
+  const labels: Record<string, string> = {
+    PENDING: 'Payment pending',
+    SUCCEEDED: 'Paid',
+    FAILED: 'Payment failed',
+    EXPIRED: 'Payment expired',
+    REFUNDED: 'Refunded',
+  };
+
+  return paymentStatus ? labels[paymentStatus] ?? paymentStatus : 'Payment pending';
+}
+
+function formatPaymentMethod(paymentMethod: string) {
+  const labels: Record<string, string> = {
+    CARD: 'Card',
+    PAYPAL: 'PayPal',
+    MULTIBANCO: 'Multibanco',
+    MB_WAY: 'MB WAY',
+  };
+
+  return labels[paymentMethod] ?? formatPaymentMode(paymentMethod);
 }
 
 function compareReservations(

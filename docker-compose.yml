@@ -163,6 +163,11 @@ services:
       HOTEL_SERVICE_URL: http://hotel-service:8081
       GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PAYMENT_LOCAL_SIMULATION_ENABLED: ${PAYMENT_LOCAL_SIMULATION_ENABLED:-true}
+      PAYMENT_STRIPE_ENABLED: ${PAYMENT_STRIPE_ENABLED:-false}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      PUBLIC_FRONTEND_BASE_URL: ${PUBLIC_FRONTEND_BASE_URL:-http://localhost:3002}
       USE_SWAGGER: ${USE_SWAGGER:-false}
     ports:
       - "8082:8082"
@@ -187,6 +192,8 @@ services:
       IDENTITY_DB_URL: jdbc:postgresql://postgres:5432/identity_service
       IDENTITY_DB_USERNAME: hotel_booking
       IDENTITY_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ACCOUNT_VERIFICATION_ENCRYPTION_SECRET: ${ACCOUNT_VERIFICATION_ENCRYPTION_SECRET:-local-development-account-verification-secret-change-me}
       USE_SWAGGER: ${USE_SWAGGER:-false}
       AUTH_REFRESH_COOKIE_SECURE: "false"
     ports:
@@ -206,6 +213,7 @@ services:
       NOTIFICATION_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
       JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?JWT_PUBLIC_KEY_BASE64 must be set}
       GUEST_ACCESS_ENCRYPTION_SECRET: ${GUEST_ACCESS_ENCRYPTION_SECRET:-local-development-encryption-secret-change-me}
+      ACCOUNT_VERIFICATION_ENCRYPTION_SECRET: ${ACCOUNT_VERIFICATION_ENCRYPTION_SECRET:-local-development-account-verification-secret-change-me}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MAIL_HOST: ${MAIL_HOST:-mailpit}
       MAIL_PORT: ${MAIL_PORT:-1025}
@@ -218,7 +226,9 @@ services:
       MAIL_SMTP_TIMEOUT_MS: ${MAIL_SMTP_TIMEOUT_MS:-5000}
       MAIL_SMTP_WRITE_TIMEOUT_MS: ${MAIL_SMTP_WRITE_TIMEOUT_MS:-5000}
       NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL_FROM:-no-reply@hotelbooking.local}
+      NOTIFICATION_CONTACT_DEFAULT_RECIPIENT: ${NOTIFICATION_CONTACT_DEFAULT_RECIPIENT:-no-reply@hotelbooking.local}
       PUBLIC_FRONTEND_BASE_URL: ${PUBLIC_FRONTEND_BASE_URL:-http://localhost:3002}
+      HOTEL_SERVICE_URL: http://hotel-service:8081
       USE_SWAGGER: ${USE_SWAGGER:-false}
     ports:
       - "8084:8084"

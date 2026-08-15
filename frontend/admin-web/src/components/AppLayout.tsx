@@ -22,12 +22,14 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { labelKey: 'dashboard', to: '/' },
   { labelKey: 'reservations', to: '/reservations', permission: 'RESERVATION_READ' },
+  { labelKey: 'contactMessages', to: '/contact-messages', permission: 'NOTIFICATION_MANAGE' },
   { labelKey: 'rooms', to: '/rooms', permission: 'ROOM_READ' },
   { labelKey: 'roomTypes', to: '/room-types', permission: 'ROOM_TYPE_MANAGE' },
   { labelKey: 'rates', to: '/rates', permission: 'RATE_PERIOD_MANAGE' },
   { labelKey: 'discountCodes', to: '/discount-codes', permission: 'DISCOUNT_CODE_MANAGE' },
   { labelKey: 'hotelSettings', to: '/hotel-settings', permission: 'HOTEL_MANAGE' },
-  { labelKey: 'users', to: '/users', permission: 'STAFF_MANAGE' },
+  { labelKey: 'staff', to: '/staff', permission: 'STAFF_MANAGE' },
+  { labelKey: 'customers', to: '/customers', permission: 'USER_MANAGE' },
 ];
 
 export function AppLayout({ children, selectedHotelId, onHotelChange, hotels, language, onLanguageChange }: AppLayoutProps) {

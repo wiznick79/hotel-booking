@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
 import pt.hotelbooking.notification.event.ReservationNotificationEvent;
+import pt.hotelbooking.notification.event.CustomerRegistrationRequestedEvent;
 import pt.hotelbooking.notification.model.Notification;
 import pt.hotelbooking.notification.model.NotificationStatus;
 import pt.hotelbooking.notification.repository.NotificationRepository;
@@ -20,6 +21,8 @@ public class NotificationProcessor {
     private final NotificationRepository notificationRepository;
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
+
+    private final AccountVerificationTokenCipher accountVerificationTokenCipher;
 
     private final EmailSender emailSender;
 
@@ -44,6 +47,23 @@ public class NotificationProcessor {
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
                 event.eventType(), null, event.hotelName(), event.notificationDisplayName(),
                 event.notificationFromAddress(), event.notificationReplyToAddress());
+    }
+
+    @Transactional
+    public void processCustomerRegistration(CustomerRegistrationRequestedEvent event) {
+        String subject = "Verify your hotel booking account";
+        if (notificationRepository.existsByReferenceIdAndSubject(event.eventId(), subject)) {
+            return;
+        }
+
+        String verificationLink = publicFrontendBaseUrl + "/#/verify-account?token="
+                + accountVerificationTokenCipher.decrypt(event.encryptedVerificationToken());
+        notificationRepository.save(new Notification(
+                event.eventId(),
+                event.email(),
+                subject,
+                "Welcome to Hotel Booking. Verify your email address to activate your account: "
+                        + verificationLink));
     }
 
     private void process(java.util.UUID reservationId, String hotelId, String guestEmail, String guestName,

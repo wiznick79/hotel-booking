@@ -30,7 +30,10 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/api/reservations",
                         "/api/reservations/availability",
-                        "/api/reservations/guest/**")
+                        "/api/reservations/guest/**",
+                        "/api/payment-methods",
+                        "/api/payments/local/**",
+                        "/api/payments/stripe/webhook")
                 .permitAll()
                 .anyRequest()
                 .authenticated())

@@ -6,6 +6,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.hotelbooking.identity.auth.model.dto.CreateUserRequest;
+import pt.hotelbooking.identity.auth.model.dto.CustomerRegistrationRequest;
+import pt.hotelbooking.identity.auth.model.dto.EmailVerificationRequest;
 import pt.hotelbooking.identity.auth.model.dto.ChangeOwnPasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdatePasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdateRolesRequest;
@@ -14,7 +16,16 @@ import pt.hotelbooking.identity.auth.model.entity.IdentityRole;
 import pt.hotelbooking.identity.auth.model.entity.IdentityUser;
 import pt.hotelbooking.identity.auth.repository.IdentityRoleRepository;
 import pt.hotelbooking.identity.auth.repository.IdentityUserRepository;
+import pt.hotelbooking.identity.event.CustomerRegistrationRequestedEvent;
+import pt.hotelbooking.identity.event.EmailVerificationTokenCipher;
+import pt.hotelbooking.identity.event.IdentityEventPublisher;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -27,6 +38,10 @@ public class IdentityUserService {
     private final IdentityRoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationTokenService authenticationTokenService;
+    private final IdentityEventPublisher identityEventPublisher;
+    private final EmailVerificationTokenCipher emailVerificationTokenCipher;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
     public IdentityUser create(CreateUserRequest request) {
@@ -41,6 +56,49 @@ public class IdentityUserService {
         user.setHotelIds(new HashSet<>(request.hotelIds()));
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public void registerCustomer(CustomerRegistrationRequest request) {
+        String email = normalizeEmail(request.email());
+        IdentityUser user = userRepository.findByUsername(email).orElse(null);
+
+        if (user != null && user.isEnabled()) {
+            return;
+        }
+
+        if (user == null) {
+            user = new IdentityUser();
+            user.setUsername(email);
+            user.setEmail(email);
+            user.setFullName(normalizeFullName(request.fullName()));
+            user.setPassword(passwordEncoder.encode(request.password()));
+            user.setEnabled(false);
+            user.setRoles(Set.of(roleRepository.findByName("CUSTOMER")
+                    .orElseThrow(() -> new IllegalStateException("Customer role is not configured."))));
+        } else {
+            user.setFullName(normalizeFullName(request.fullName()));
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
+
+        String rawToken = newVerificationToken();
+        user.prepareEmailVerification(hash(rawToken), Instant.now().plus(Duration.ofHours(24)));
+        IdentityUser savedUser = userRepository.save(user);
+        identityEventPublisher.publishCustomerRegistration(new CustomerRegistrationRequestedEvent(
+                java.util.UUID.randomUUID(),
+                savedUser.getEmail(),
+                emailVerificationTokenCipher.encrypt(rawToken)), savedUser.getId());
+    }
+
+    @Transactional
+    public AuthenticationTokenService.IssuedTokens verifyCustomerEmail(EmailVerificationRequest request) {
+        String tokenHash = hash(request.token());
+        IdentityUser user = userRepository.findByEmailVerificationTokenHash(tokenHash)
+                .filter(candidate -> candidate.hasValidEmailVerificationToken(tokenHash, Instant.now()))
+                .orElseThrow(() -> new IllegalArgumentException("The email-verification link is invalid or expired."));
+
+        user.verifyEmail();
+        return authenticationTokenService.issueTokens(user);
     }
 
     @Transactional
@@ -77,6 +135,16 @@ public class IdentityUserService {
     }
 
     @Transactional
+    public IdentityUser updateOwnProfile(
+            String username,
+            String fullName) {
+        IdentityUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+        user.setFullName(normalizeFullName(fullName));
+        return user;
+    }
+
+    @Transactional
     public void updateEnabled(Long userId, boolean enabled) {
         IdentityUser user = findUser(userId);
         user.setEnabled(enabled);
@@ -91,6 +159,11 @@ public class IdentityUserService {
     @Transactional(readOnly = true)
     public List<IdentityUser> findAll() {
         return userRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<IdentityUser> findByRoleNames(Set<String> roleNames) {
+        return userRepository.findByRoleNames(roleNames);
     }
 
     @Transactional(readOnly = true)
@@ -121,5 +194,29 @@ public class IdentityUserService {
         }
 
         return roles;
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private String normalizeFullName(String fullName) {
+        return fullName.trim().replaceAll("\\s+", " ");
+    }
+
+    private String newVerificationToken() {
+        byte[] bytes = new byte[32];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hash(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 must be available.", exception);
+        }
     }
 }

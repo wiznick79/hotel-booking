@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
+import pt.hotelbooking.booking.model.dto.ReservationCreationResponse;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
+import pt.hotelbooking.booking.model.dto.PaymentAttemptResponse;
 import pt.hotelbooking.booking.model.dto.AvailabilitySearchResponse;
 import pt.hotelbooking.booking.model.entity.Reservation;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
@@ -12,6 +14,7 @@ import pt.hotelbooking.booking.model.entity.AuditLog;
 import pt.hotelbooking.booking.repository.ReservationRepository;
 import pt.hotelbooking.booking.repository.AuditLogRepository;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
+import pt.hotelbooking.booking.repository.PaymentAttemptRepository;
 import pt.hotelbooking.booking.integration.HotelCatalogClient;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
 import pt.hotelbooking.booking.model.entity.PaymentMethod;
@@ -35,6 +38,7 @@ import java.util.UUID;
 public class ReservationService {
     private final ReservationRepository reservationRepo;
     private final BookingPolicyRepository policyRepo;
+    private final PaymentAttemptRepository paymentAttemptRepository;
     private final HotelCatalogClient hotelCatalogClient;
 
     private final GuestAccessService guestAccessService;
@@ -43,11 +47,13 @@ public class ReservationService {
 
     private final DiscountCodeService discountCodeService;
 
+    private final PaymentService paymentService;
+
     private final AuditLogRepository auditLogRepository;
 
     @Transactional(readOnly = true)
     public ReservationResponse findById(java.util.UUID id) {
-        return ReservationResponse.from(reservationRepo.findById(id)
+        return toResponse(reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id)));
     }
 
@@ -77,7 +83,7 @@ public class ReservationService {
                         to,
                         from)
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -96,7 +102,7 @@ public class ReservationService {
                         List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
                                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN))
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -104,7 +110,7 @@ public class ReservationService {
     public List<ReservationResponse> findMyReservations(String customerUsername) {
         return reservationRepo.findByCustomerUsernameOrderByCheckInDateDesc(customerUsername)
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -210,7 +216,7 @@ public class ReservationService {
                 "Reservation confirmed by staff."));
         publishReservationEvent("ReservationConfirmed", reservation);
 
-        return ReservationResponse.from(reservation);
+        return toResponse(reservation);
     }
 
     @Transactional
@@ -337,11 +343,18 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse create(ReservationRequest request) {
-        return create(request, null);
+        return createReservation(request, null).reservation();
     }
 
     @Transactional
     public ReservationResponse create(ReservationRequest request, String customerUsername) {
+        return createReservation(request, customerUsername).reservation();
+    }
+
+    @Transactional
+    public ReservationCreationResponse createReservation(
+            ReservationRequest request,
+            String customerUsername) {
         if (!request.checkOutDate().isAfter(request.checkInDate())) {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
@@ -369,6 +382,11 @@ public class ReservationService {
             throw new IllegalStateException("The hotel has reached its limit for unpaid bookings.");
         }
 
+        if (paymentMode == PaymentMode.PAY_NOW && (policy == null
+                || !policy.getEnabledOnlinePaymentMethods().contains(paymentMethod))) {
+            throw new IllegalStateException("The selected online payment method is not enabled for this hotel.");
+        }
+
         Reservation reservation = new Reservation(request.hotelId(), request.guestName(), request.guestPhone(),
                 request.guestEmail(), request.guestCount(), request.checkInDate(), request.checkOutDate(), request.notes());
         reservation.recordPrivacyNoticeAcceptance();
@@ -393,6 +411,10 @@ public class ReservationService {
         reservation.applyPriceSnapshot(discount.total(), "EUR");
         reservation.applyDiscountSnapshot(discount.code(), discount.amount());
 
+        if (paymentMode == PaymentMode.PAY_NOW) {
+            reservation.placeHold(Instant.now().plus(policy.getHoldDuration()));
+        }
+
         Reservation savedReservation = reservationRepo.save(reservation);
         eventPublisher.publish(new ReservationCreatedEvent(
                 savedReservation.getId(),
@@ -406,7 +428,25 @@ public class ReservationService {
                 savedReservation.getCurrency(), hotel.name(), hotel.notificationDisplayName(),
                 hotel.notificationFromAddress(), hotel.notificationReplyToAddress()));
 
-        return ReservationResponse.from(savedReservation);
+        return new ReservationCreationResponse(
+                ReservationResponse.from(savedReservation),
+                guestAccessToken.rawToken());
+    }
+
+    @Transactional
+    public PaymentAttemptResponse initiateGuestPayment(String rawToken) {
+        Reservation reservation = reservationRepo.findByGuestAccessTokenHash(guestAccessService.hash(rawToken))
+                .orElseThrow(() -> new ReservationNotFoundException("Guest reservation not found."));
+
+        if (!reservation.hasValidGuestAccess(Instant.now())) {
+            throw new ReservationNotFoundException("Guest reservation not found.");
+        }
+
+        if (reservation.getPaymentMode() != PaymentMode.PAY_NOW) {
+            throw new IllegalStateException("This reservation does not require online payment.");
+        }
+
+        return paymentService.initiate(reservation);
     }
 
     @Transactional
@@ -476,6 +516,7 @@ public class ReservationService {
 
         for (Reservation reservation : expiredReservations) {
             reservation.expireHold();
+            paymentService.expirePendingAttempts(reservation);
             auditLogRepository.save(new AuditLog(
                     "system",
                     "RESERVATION_HOLD_EXPIRED",
@@ -588,6 +629,12 @@ public class ReservationService {
         }
 
         return paymentMode;
+    }
+
+    private ReservationResponse toResponse(Reservation reservation) {
+        return paymentAttemptRepository.findFirstByReservationOrderByCreatedAtDesc(reservation)
+                .map(paymentAttempt -> ReservationResponse.from(reservation, paymentAttempt))
+                .orElseGet(() -> ReservationResponse.from(reservation));
     }
 
     private boolean hasAvailableRoomTypeCapacity(

@@ -32,6 +32,32 @@ class PaymentProviderRegistryTests {
                 .hasMessage("No payment provider is configured for CARD.");
     }
 
+    @Test
+    void rejectsAmbiguousProviderConfiguration() {
+        PaymentProvider localProvider = new FakePaymentProvider(
+                PaymentProviderType.LOCAL_SIMULATION,
+                List.of(PaymentMethod.CARD));
+        PaymentProvider stripeProvider = new FakePaymentProvider(
+                PaymentProviderType.STRIPE,
+                List.of(PaymentMethod.CARD));
+        PaymentProviderRegistry registry = new PaymentProviderRegistry(List.of(localProvider, stripeProvider));
+
+        assertThatThrownBy(() -> registry.providerFor(PaymentMethod.CARD))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("More than one payment provider is configured for CARD.");
+    }
+
+    @Test
+    void reportsWhetherExactlyOneProviderSupportsMethod() {
+        PaymentProvider stripeProvider = new FakePaymentProvider(
+                PaymentProviderType.STRIPE,
+                List.of(PaymentMethod.CARD));
+        PaymentProviderRegistry registry = new PaymentProviderRegistry(List.of(stripeProvider));
+
+        assertThat(registry.hasExactlyOneProviderFor(PaymentMethod.CARD)).isTrue();
+        assertThat(registry.hasExactlyOneProviderFor(PaymentMethod.PAYPAL)).isFalse();
+    }
+
     private record FakePaymentProvider(PaymentProviderType providerType, List<PaymentMethod> methods)
             implements PaymentProvider {
 
@@ -42,7 +68,12 @@ class PaymentProviderRegistryTests {
 
         @Override
         public PaymentInitiation initiate(PaymentInitiationRequest request) {
-            return new PaymentInitiation(providerType, "provider-payment", "https://example.test/checkout", java.util.Map.of());
+            return new PaymentInitiation(
+                    providerType,
+                    "provider-payment",
+                    null,
+                    "https://example.test/checkout",
+                    java.util.Map.of());
         }
 
         @Override

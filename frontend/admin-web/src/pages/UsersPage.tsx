@@ -14,7 +14,12 @@ import type { Hotel } from '../api/hotelApi';
 import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
 
-export function UsersPage({ selectedHotelId }: { selectedHotelId: string }) {
+type UsersPageProps = {
+  selectedHotelId: string;
+  category: 'staff' | 'customers';
+};
+
+export function UsersPage({ selectedHotelId, category }: UsersPageProps) {
   const { session } = useAuth();
   const [users, setUsers] = useState<CurrentUser[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
@@ -22,13 +27,14 @@ export function UsersPage({ selectedHotelId }: { selectedHotelId: string }) {
   const [editingUser, setEditingUser] = useState<CurrentUser | null>(null);
   const [error, setError] = useState('');
   const isAdmin = session?.claims.roles.includes('ROLE_ADMIN') ?? false;
+  const isCustomerView = category === 'customers';
   const roles = isAdmin ? ['MANAGER', 'STAFF'] : ['STAFF'];
 
   const load = useCallback(async () => {
     if (!session) return;
     try {
       const [loadedUsers, loadedHotels] = await Promise.all([
-        findUsers(session.accessToken),
+        findUsers(session.accessToken, isCustomerView ? 'CUSTOMERS' : 'STAFF'),
         findHotels(session.accessToken),
       ]);
       setUsers(loadedUsers);
@@ -37,7 +43,7 @@ export function UsersPage({ selectedHotelId }: { selectedHotelId: string }) {
     } catch {
       setError('Users could not be loaded.');
     }
-  }, [session]);
+  }, [isCustomerView, session]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -92,11 +98,17 @@ export function UsersPage({ selectedHotelId }: { selectedHotelId: string }) {
 
   return <section>
     <div className="page-heading">
-      <div><p className="eyebrow">Administration</p><h1>Users</h1><p>Create users and assign their hotels.</p></div>
-      <button type="button" onClick={openCreateForm}>New user</button>
+      <div>
+        <p className="eyebrow">Administration</p>
+        <h1>{isCustomerView ? 'Customers' : 'Staff'}</h1>
+        <p>{isCustomerView
+          ? 'View and support registered customer accounts.'
+          : 'Create staff accounts and assign the hotels they can manage.'}</p>
+      </div>
+      {!isCustomerView && <button type="button" onClick={openCreateForm}>New staff member</button>}
     </div>
     {error && <p className="form-error">{error}</p>}
-    {isFormOpen && <section className="setup-card room-type-form-card">
+    {!isCustomerView && isFormOpen && <section className="setup-card room-type-form-card">
       <h2>{editingUser ? `Edit ${editingUser.username}` : 'New user'}</h2>
       <form className="hotel-form" onSubmit={submit}>
         {!editingUser && <label>Username<input name="username" autoComplete="username" required /></label>}
@@ -106,6 +118,110 @@ export function UsersPage({ selectedHotelId }: { selectedHotelId: string }) {
         <div className="form-actions full-width"><button type="button" className="secondary-button" onClick={() => setIsFormOpen(false)}>Cancel</button><button type="submit">{editingUser ? 'Save user' : 'Create user'}</button></div>
       </form>
     </section>}
-    {!error && <div className="table-container"><table><thead><tr><th>Username</th><th>Roles</th><th>Assigned hotels</th><th>Status</th><th /></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td><strong>{user.username}</strong></td><td>{user.roles.join(', ') || 'No role'}</td><td>{user.hotelIds.length}</td><td><StatusBadge label={user.enabled ? 'Enabled' : 'Disabled'} tone={user.enabled ? 'positive' : 'negative'} /></td><td>{isAdmin && <><button type="button" className="secondary-button" onClick={() => { setEditingUser(user); setIsFormOpen(true); }}>Edit</button> <button type="button" className="secondary-button" onClick={() => void toggleEnabled(user)}>{user.enabled ? 'Disable' : 'Enable'}</button> <button type="button" className="secondary-button" onClick={() => void resetPassword(user)}>Reset password</button></>}</td></tr>)}</tbody></table></div>}
+    {!error && (isCustomerView
+      ? <CustomerTable
+          isAdmin={isAdmin}
+          onResetPassword={resetPassword}
+          onToggleEnabled={toggleEnabled}
+          users={users}
+        />
+      : <StaffTable
+          isAdmin={isAdmin}
+          onEdit={(user) => { setEditingUser(user); setIsFormOpen(true); }}
+          onResetPassword={resetPassword}
+          onToggleEnabled={toggleEnabled}
+          users={users}
+        />)}
   </section>;
+}
+
+type UserTableProps = {
+  users: CurrentUser[];
+  isAdmin: boolean;
+  onToggleEnabled: (user: CurrentUser) => Promise<void>;
+  onResetPassword: (user: CurrentUser) => Promise<void>;
+};
+
+function StaffTable({ users, isAdmin, onToggleEnabled, onResetPassword, onEdit }: UserTableProps & {
+  onEdit: (user: CurrentUser) => void;
+}) {
+  return (
+    <div className="table-container">
+      <table>
+        <thead>
+          <tr><th>Username</th><th>Role</th><th>Assigned hotels</th><th>Status</th><th /></tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.id}>
+              <td><strong>{user.username}</strong></td>
+              <td>{user.roles.join(', ') || 'No role'}</td>
+              <td>{user.hotelIds.length}</td>
+              <td><UserStatus user={user} /></td>
+              <td>{isAdmin && <UserActions
+                onEdit={() => onEdit(user)}
+                onResetPassword={() => void onResetPassword(user)}
+                onToggleEnabled={() => void onToggleEnabled(user)}
+                showEdit
+                user={user}
+              />}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CustomerTable({ users, isAdmin, onToggleEnabled, onResetPassword }: UserTableProps) {
+  return (
+    <div className="table-container">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Email address</th><th>Status</th><th /></tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.id}>
+              <td><strong>{user.fullName || 'Not provided'}</strong></td>
+              <td>{user.username}</td>
+              <td><UserStatus user={user} /></td>
+              <td>{isAdmin && <UserActions
+                onResetPassword={() => void onResetPassword(user)}
+                onToggleEnabled={() => void onToggleEnabled(user)}
+                user={user}
+              />}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function UserStatus({ user }: { user: CurrentUser }) {
+  return <StatusBadge
+    label={user.enabled ? 'Enabled' : 'Disabled'}
+    tone={user.enabled ? 'positive' : 'negative'}
+  />;
+}
+
+type UserActionsProps = {
+  user: CurrentUser;
+  showEdit?: boolean;
+  onEdit?: () => void;
+  onToggleEnabled: () => void;
+  onResetPassword: () => void;
+};
+
+function UserActions({ user, showEdit = false, onEdit, onToggleEnabled, onResetPassword }: UserActionsProps) {
+  return (
+    <div className="table-actions">
+      {showEdit && <button type="button" className="secondary-button" onClick={onEdit}>Edit</button>}
+      <button type="button" className="secondary-button" onClick={onToggleEnabled}>
+        {user.enabled ? 'Disable' : 'Enable'}
+      </button>
+      <button type="button" className="secondary-button" onClick={onResetPassword}>Reset password</button>
+    </div>
+  );
 }

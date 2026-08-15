@@ -39,6 +39,16 @@ booking:
     initial-retry-delay-seconds: 30
     maximum-retry-delay-seconds: 3600
 
+payment:
+  local-simulation:
+    enabled: ${PAYMENT_LOCAL_SIMULATION_ENABLED:false}
+    public-frontend-base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3002}
+  stripe:
+    enabled: ${PAYMENT_STRIPE_ENABLED:false}
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    public-frontend-base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3002}
+
 hotel-service:
   url: ${HOTEL_SERVICE_URL:http://localhost:8081}
   connect-timeout-ms: ${HOTEL_SERVICE_CONNECT_TIMEOUT_MS:2000}
