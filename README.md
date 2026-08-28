@@ -41,8 +41,31 @@ $env:USE_SWAGGER='true'
 docker compose up --build
 ```
 
-Then open [the gateway Swagger UI](http://localhost:8080/swagger-ui/index.html). It provides a selector for each
-service. Direct service UIs are also available at `http://localhost:8081` through `8084` under `/swagger-ui/index.html`.
+Then open [the gateway Swagger UI](http://localhost:18080/swagger-ui/index.html). It provides a selector for each
+service. Direct service UIs are also available at `http://localhost:18081` through `18084` under `/swagger-ui/index.html`.
+
+## Local Docker ports
+
+Hotel Booking uses a project-specific host-port range to reduce collisions with other local projects. Docker-internal
+addresses remain unchanged; for example, services still connect to `postgres:5432` and `kafka:9092`.
+
+| Component | Default host port | Override variable |
+| --- | ---: | --- |
+| Grafana | 13001 | `HB_GRAFANA_PORT` |
+| Public website | 13002 | `HB_PUBLIC_WEB_PORT` |
+| Admin website | 13004 | `HB_ADMIN_WEB_PORT` |
+| PostgreSQL | 15432 | `HB_POSTGRES_PORT` |
+| API gateway | 18080 | `HB_GATEWAY_PORT` |
+| Hotel service | 18081 | `HB_HOTEL_SERVICE_PORT` |
+| Booking service | 18082 | `HB_BOOKING_SERVICE_PORT` |
+| Identity service | 18083 | `HB_IDENTITY_SERVICE_PORT` |
+| Notification service | 18084 | `HB_NOTIFICATION_SERVICE_PORT` |
+| Mailpit web UI | 18025 | `HB_MAILPIT_UI_PORT` |
+| Mailpit SMTP | 11025 | `HB_MAILPIT_SMTP_PORT` |
+| Prometheus | 19090 | `HB_PROMETHEUS_PORT` |
+| Kafka | 19092 | `HB_KAFKA_PORT` |
+
+Override a port in `.env` when necessary, for example `HB_POSTGRES_PORT=25432`. The `.env` file is ignored by Git.
 
 ## Local JWT signing keys
 

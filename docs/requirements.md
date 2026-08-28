@@ -155,6 +155,11 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Important actions must be auditable.
 - APIs must validate input and return consistent error responses.
 - The system must provide health checks, structured logs, and basic observability.
+- Synchronous cross-service calls must use bounded connection/read timeouts and circuit breakers.
+- Automatic retries must be short and limited to transient failures. The gateway must retry only idempotent read
+  requests; write requests must not be retried automatically.
+- Booking must fail safely when authoritative hotel availability or pricing cannot be retrieved. The system must
+  never invent or silently reuse stale availability or price data as a resilience fallback.
 - Personal data must be handled according to applicable GDPR principles.
 
 ## Client applications

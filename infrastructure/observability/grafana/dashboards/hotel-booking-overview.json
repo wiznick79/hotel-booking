@@ -28,6 +28,36 @@
       "title": "Service availability",
       "type": "stat",
       "targets": [{"expr": "up{job=~\"api-gateway|hotel-service|booking-service|identity-service|notification-service\"}", "legendFormat": "{{job}}"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 4,
+      "title": "Circuit breaker state",
+      "type": "timeseries",
+      "targets": [{"expr": "resilience4j_circuitbreaker_state", "legendFormat": "{{application}} · {{name}} · {{state}}"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 5,
+      "title": "Circuit breaker rejected and failed calls",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "sum by (application, name) (rate(resilience4j_circuitbreaker_calls_seconds_count{kind=\"failed\"}[1m]))", "legendFormat": "{{application}} · {{name}} · failed"},
+        {"expr": "sum by (application, name) (rate(resilience4j_circuitbreaker_not_permitted_calls_total[1m]))", "legendFormat": "{{application}} · {{name}} · rejected"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+      "id": 6,
+      "title": "Retried calls",
+      "type": "timeseries",
+      "targets": [{"expr": "sum by (application, name, kind) (rate(resilience4j_retry_calls_total{kind=~\"successful_with_retry|failed_with_retry\"}[1m]))", "legendFormat": "{{application}} · {{name}} · {{kind}}"}]
     }
   ],
   "schemaVersion": 41,

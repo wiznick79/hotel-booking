@@ -68,6 +68,32 @@ public-frontend:
 
 hotel-service:
   url: ${HOTEL_SERVICE_URL:http://localhost:8081}
+  connect-timeout-ms: ${HOTEL_SERVICE_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${HOTEL_SERVICE_READ_TIMEOUT_MS:5000}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      hotelService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        event-consumer-buffer-size: 20
+        record-exceptions:
+          - pt.hotelbooking.notification.integration.HotelServiceUnavailableException
+  retry:
+    instances:
+      hotelService:
+        max-attempts: 2
+        wait-duration: 150ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - pt.hotelbooking.notification.integration.HotelServiceUnavailableException
 
 guest-access:
   encryption-secret: ${GUEST_ACCESS_ENCRYPTION_SECRET:change-this-development-secret}

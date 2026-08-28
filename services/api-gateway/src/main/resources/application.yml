@@ -5,6 +5,15 @@ spring:
     gateway:
       server:
         webflux:
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:2000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
+          default-filters:
+            - name: Retry
+              args:
+                retries: 1
+                methods: GET
+                series: SERVER_ERROR
           routes:
             - id: public-login-rate-limit
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
@@ -12,6 +21,11 @@ spring:
                 - Path=/api/auth/login
                 - Method=POST
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: identityService
+                    fallbackUri: forward:/fallback/identity-service
+                    statusCodes: 500,502,503,504
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 5
@@ -25,6 +39,11 @@ spring:
                 - Path=/api/reservations
                 - Method=POST
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: bookingService
+                    fallbackUri: forward:/fallback/booking-service
+                    statusCodes: 500,502,503,504
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 10
@@ -38,6 +57,11 @@ spring:
                 - Path=/api/contact-messages
                 - Method=POST
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: notificationService
+                    fallbackUri: forward:/fallback/notification-service
+                    statusCodes: 500,502,503,504
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 2
@@ -49,10 +73,22 @@ spring:
               uri: ${IDENTITY_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/auth/**,/api/users/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: identityService
+                    fallbackUri: forward:/fallback/identity-service
+                    statusCodes: 500,502,503,504
             - id: notification-service
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/contact-messages/**,/api/notifications/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: notificationService
+                    fallbackUri: forward:/fallback/notification-service
+                    statusCodes: 500,502,503,504
             - id: hotel-service-openapi
               uri: ${HOTEL_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -81,10 +117,22 @@ spring:
               uri: ${HOTEL_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/hotels/**,/api/rooms/**,/api/room-types/**,/api/pricing-rules/**,/api/room-unavailabilities/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: hotelService
+                    fallbackUri: forward:/fallback/hotel-service
+                    statusCodes: 500,502,503,504
             - id: booking-service
               uri: ${BOOKING_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/reservations/**,/api/booking-policies/**,/api/discount-codes/**,/api/outbox-events/**,/api/payment-methods/**,/api/payments/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: bookingService
+                    fallbackUri: forward:/fallback/booking-service
+                    statusCodes: 500,502,503,504
   webflux:
     cors:
       allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
@@ -95,6 +143,27 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      identityService:
+        base-config: default
+      bookingService:
+        base-config: default
+      notificationService:
+        base-config: default
+      hotelService:
+        base-config: default
 
 server:
   port: 8080

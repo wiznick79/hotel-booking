@@ -49,7 +49,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 Only one online provider should be enabled at a time. For local webhook forwarding, run:
 
 ```powershell
-stripe listen --forward-to http://localhost:8080/api/payments/stripe/webhook
+stripe listen --forward-to http://localhost:18080/api/payments/stripe/webhook
 ```
 
 The CLI prints a local `whsec_...` signing secret. It is distinct from any signing secret shown for a Stripe Dashboard

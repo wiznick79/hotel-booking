@@ -21,7 +21,8 @@ npm run dev
 ```
 
 The Vite development server runs on `http://localhost:3000` and proxies `/api`
-requests to the local API gateway at `http://localhost:8080`.
+requests to the Compose API gateway at `http://localhost:18080` by default. Set
+`VITE_API_PROXY_TARGET` to use another gateway address.
 
 ## Authentication
 

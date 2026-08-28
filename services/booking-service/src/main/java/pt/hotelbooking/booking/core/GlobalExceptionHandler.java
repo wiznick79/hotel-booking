@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import pt.hotelbooking.booking.integration.HotelServiceUnavailableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import pt.hotelbooking.booking.exception.ReservationNotFoundException;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
@@ -31,5 +32,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class, RoomReassignmentException.class})
     public ProblemDetail handleConflict(RuntimeException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(HotelServiceUnavailableException.class)
+    public ProblemDetail handleHotelServiceUnavailable(HotelServiceUnavailableException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
     }
 }

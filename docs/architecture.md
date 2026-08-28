@@ -64,7 +64,7 @@ flowchart LR
 
 | Component | Responsibility | Owns |
 |---|---|---|
-| **API Gateway** | Single API entry point, routing, CORS, correlation IDs, Redis-backed rate limits, and aggregated Swagger UI in development. | No business data. |
+| **API Gateway** | Single API entry point, routing, CORS, correlation IDs, Redis-backed rate limits, downstream timeouts/circuit breakers, safe `503` fallbacks, and aggregated Swagger UI in development. | No business data. |
 | **Identity Service** | Staff/customer identities, roles, permissions, assigned hotels, login, refresh tokens, customer email verification, JWT issue/validation, and its own outbox. | `identity_service` database. |
 | **Hotel Service** | Hotels, translated room types, physical rooms, rates, booking policies, and dated room-unavailability blocks. | `hotel_service` database. |
 | **Booking Service** | Public availability search, reservation lifecycle, pricing snapshots, room-type capacity validation, automatic physical-room assignment, reassignment validation, guest links, discount codes, and outbox events. | `booking_service` database. |
@@ -79,7 +79,7 @@ Each service owns its database. Services never read or write another service's s
 | **Admin web** | React + TypeScript + Vite application for owners, managers, and staff. It manages inventory, rates, policies, users, reservations, room reassignment, and the room-availability calendar. | In local development, Vite proxies `/api` to the gateway. |
 | **Public web** | React + TypeScript + Vite guest website. Guests browse a hotel, search date-specific room-type availability and prices, then request a booking without an account. | In local development, Vite proxies `/api` to the gateway. |
 
-Both frontends have production Docker images: a Node build stage creates static assets and a small Nginx runtime serves them. Local Compose exposes public-web on `3002` and admin-web on `3004`. The staging Compose override keeps those ports private and Caddy publishes public-web at `hotel.wiznick.net` and admin-web at `admin.hotel.wiznick.net`. Production deployment remains pending. The public website currently chooses the first configured hotel as a temporary development shortcut; the intended future approach is host-based resolution, such as one subdomain per hotel.
+Both frontends have production Docker images: a Node build stage creates static assets and a small Nginx runtime serves them. Local Compose exposes public-web on `13002` and admin-web on `13004`. The staging Compose override keeps those ports private and Caddy publishes public-web at `hotel.wiznick.net` and admin-web at `admin.hotel.wiznick.net`. Production deployment remains pending. The public website currently chooses the first configured hotel as a temporary development shortcut; the intended future approach is host-based resolution, such as one subdomain per hotel.
 
 ## Main request and event flows
 
@@ -90,6 +90,10 @@ Both frontends have production Docker images: a Node build stage creates static 
 3. The service validates the JWT, permissions, and hotel assignment where relevant.
 4. The service reads or writes only its own database and returns the response through the gateway.
 
+The gateway limits downstream connection and response time, retries one time only for idempotent `GET` requests,
+and wraps each service in an independent circuit breaker. It never retries write requests because doing so could
+repeat a non-idempotent operation.
+
 ### Public availability and booking
 
 1. Public web calls `booking-service` through the gateway with hotel, dates, and guest count.
@@ -97,6 +101,11 @@ Both frontends have production Docker images: a Node build stage creates static 
 3. Booking-service combines that data with its own reservations and holds, returning only available **room types** and their total stay prices. Physical room numbers are never shown to guests.
 4. On booking creation, booking-service revalidates availability, freezes the price snapshot, records the reservation, and automatically assigns a suitable physical room internally.
 5. A reservation item retains both the booked room type and its internal room assignment. Staff may change the assignment later, subject to availability validation.
+
+Booking-service protects synchronous hotel-service calls with connection/read timeouts, one short retry for
+transient transport or `5xx` failures, and a circuit breaker. It does not fall back to guessed or stale price and
+availability data: when authoritative hotel data cannot be obtained, the request fails with `503 Service
+Unavailable`.
 
 ### Notification delivery
 
@@ -145,6 +154,8 @@ Both reservation and identity topics have dead-letter topics for unprocessable m
 - API gateway creates or forwards `X-Correlation-Id`; services log it and booking-service propagates it to synchronous hotel-service requests.
 - Prometheus scrapes the gateway and services every 15 seconds.
 - Grafana dashboards are provisioned from version-controlled definitions.
+- Resilience4j publishes circuit-breaker and retry metrics to Prometheus. Grafana shows circuit state, failed or
+  rejected calls, and calls that required retries.
 - Springdoc/OpenAPI provides Swagger UI only when `USE_SWAGGER=true`; it is disabled in staging.
 
 ## Local runtime stack
@@ -154,9 +165,9 @@ Both reservation and identity topics have dead-letter topics for unprocessable m
 - five Spring Boot services;
 - PostgreSQL, Redis, Kafka, and Mailpit;
 - Prometheus and Grafana;
-- the API gateway on `http://localhost:8080`.
+- the API gateway on `http://localhost:18080`.
 
-The service ports are also exposed locally for diagnostics: hotel `8081`, booking `8082`, identity `8083`, and notification `8084`. Grafana is `3001`, Prometheus `9090`, Mailpit `8025`, and Kafka `9092`.
+The service ports are also exposed locally for diagnostics: hotel `18081`, booking `18082`, identity `18083`, and notification `18084`. PostgreSQL is `15432`, Grafana is `13001`, Prometheus is `19090`, Mailpit is `18025` (web) and `11025` (SMTP), and Kafka is `19092`. These are host mappings only; containers continue to use their standard internal ports. Every mapping can be overridden through its corresponding `HB_*_PORT` Compose environment variable.
 
 ## Deployment and CI/CD
 
@@ -170,6 +181,8 @@ The service ports are also exposed locally for diagnostics: hotel `8081`, bookin
 
 - The frontend containers need their first staging deployment and a DNS record for `admin.hotel.wiznick.net`.
 - Public hotel resolution must move from “first hotel” to a configured hostname or explicit hotel selection.
-- Internal synchronous calls currently use configured service URLs. Service discovery and/or a service mesh are not needed for the current single-host Compose deployment, but are valid future learning steps.
+- Internal synchronous calls currently use configured service URLs and are protected with bounded timeouts,
+  transient retries, and circuit breakers. Service discovery and/or a service mesh are not needed for the current
+  single-host Compose deployment, but are valid future learning steps.
 - Kafka is self-managed in Compose. AWS MSK, SQS/SNS, or a managed Kafka provider are deployment alternatives, not application-level requirements.
 - The calendar currently provides a weekly all-rooms view. A monthly single-room calendar and richer drag/drop operational planning can be added without changing the core domain model.
