@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
+import pt.hotelbooking.notification.event.CustomerRegistrationRequestedEvent;
 import pt.hotelbooking.notification.model.Notification;
 import pt.hotelbooking.notification.model.NotificationStatus;
 import pt.hotelbooking.notification.repository.NotificationRepository;
@@ -34,6 +35,9 @@ class NotificationProcessorTests {
     @Mock
     private GuestAccessTokenCipher guestAccessTokenCipher;
 
+    @Mock
+    private AccountVerificationTokenCipher accountVerificationTokenCipher;
+
     @InjectMocks
     private NotificationProcessor notificationProcessor;
 
@@ -49,7 +53,9 @@ class NotificationProcessorTests {
         verify(notificationRepository).save(argThat(notification ->
                 notification.getSenderDisplayName().equals("Hotel Morgadinha")
                         && notification.getSenderFromAddress().equals("morgadinha@wiznick.net")
-                        && notification.getSenderReplyToAddress().equals("reservas@hotelmorgadinha.pt")));
+                        && notification.getSenderReplyToAddress().equals("reservas@hotelmorgadinha.pt")
+                        && notification.getBody().contains("we have received your booking request")
+                        && !notification.getBody().contains("ReservationCreated")));
     }
 
     @Test
@@ -97,6 +103,27 @@ class NotificationProcessorTests {
 
         verify(emailSender).send(notification);
         org.assertj.core.api.Assertions.assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
+    }
+
+    @Test
+    void shouldCreateVerificationNotificationForCustomerRegistration() {
+        CustomerRegistrationRequestedEvent event = new CustomerRegistrationRequestedEvent(
+                UUID.randomUUID(),
+                "customer@example.com",
+                "encrypted-verification-token");
+        ReflectionTestUtils.setField(notificationProcessor, "publicFrontendBaseUrl", "https://hotel.example");
+        when(notificationRepository.existsByReferenceIdAndSubject(
+                event.eventId(), "Verify your hotel booking account")).thenReturn(false);
+        when(accountVerificationTokenCipher.decrypt(event.encryptedVerificationToken()))
+                .thenReturn("raw-verification-token");
+
+        notificationProcessor.processCustomerRegistration(event);
+
+        verify(notificationRepository).save(argThat(notification ->
+                notification.getRecipient().equals("customer@example.com")
+                        && notification.getSubject().equals("Verify your hotel booking account")
+                        && notification.getBody().contains(
+                                "https://hotel.example/#/verify-account?token=raw-verification-token")));
     }
 
     private ReservationCreatedEvent event(String email) {

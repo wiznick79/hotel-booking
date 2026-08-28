@@ -15,11 +15,15 @@ export type Reservation = {
   totalPrice: number | null;
   currency: string | null;
   paymentMode: string;
+  paymentMethod: string;
+  paymentStatus: PaymentStatus | null;
   manualConfirmationRequired: boolean;
   holdUntil: string | null;
   discountCode: string | null;
   discountAmount: number | null;
 };
+
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED' | 'REFUNDED';
 
 export type ReservationItem = {
   id: string;

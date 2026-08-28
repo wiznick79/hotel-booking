@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
@@ -44,6 +45,27 @@ class ReservationControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"hotelId\":\"\",\"guestName\":\"\",\"guestPhone\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsPublicReservationWithoutPrivacyConsent() throws Exception {
+        mockMvc.perform(post("/api/reservations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "hotelId": "hotel-1",
+                                  "guestName": "Guest",
+                                  "guestPhone": "+351000000000",
+                                  "guestCount": 1,
+                                  "checkInDate": "2099-08-10",
+                                  "checkOutDate": "2099-08-12",
+                                  "roomTypeIds": ["room-type-1"],
+                                  "privacyNoticeAccepted": false
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(reservationService);
     }
 
     @Test
@@ -75,6 +97,6 @@ class ReservationControllerTests {
                 LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), null,
                 ReservationStatus.PENDING, List.of(new ReservationItemResponse(
                 UUID.randomUUID(), "room-type-1", null)), null, null, null,
-                false, null, null, null);
+                null, false, null, null, null);
     }
 }

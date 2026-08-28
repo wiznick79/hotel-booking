@@ -14,12 +14,15 @@ import { DiscountCodesPage } from './pages/DiscountCodesPage';
 import { HotelSettingsPage } from './pages/HotelSettingsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { ContactMessagesPage } from './pages/ContactMessagesPage';
+import { readAdminLanguage, type AdminLanguage } from './i18n';
 
 function App() {
   const { session } = useAuth();
   const [path, setPath] = useState(readPath);
   const [selectedHotelId, setSelectedHotelId] = useState('');
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [language, setLanguage] = useState<AdminLanguage>(readAdminLanguage);
 
   useEffect(() => {
     if (!session) {
@@ -60,7 +63,7 @@ function App() {
   }, []);
 
   if (!session) {
-    return <LoginPage />;
+    return <LoginPage language={language} onLanguageChange={handleLanguageChange} />;
   }
 
   const pages: Record<string, ReactNode> = {
@@ -71,7 +74,10 @@ function App() {
     '/rates': <RatesPage hotelId={selectedHotelId} />,
     '/discount-codes': <DiscountCodesPage hotelId={selectedHotelId} />,
     '/hotel-settings': <HotelSettingsPage hotelId={selectedHotelId} />,
-    '/users': <UsersPage selectedHotelId={selectedHotelId} />,
+    '/staff': <UsersPage category="staff" selectedHotelId={selectedHotelId} />,
+    '/customers': <UsersPage category="customers" selectedHotelId={selectedHotelId} />,
+    '/contact-messages': <ContactMessagesPage hotelId={selectedHotelId} language={language} />,
+    '/users': <UsersPage category="staff" selectedHotelId={selectedHotelId} />,
     '/change-password': <ChangePasswordPage />,
   };
 
@@ -80,11 +86,18 @@ function App() {
     setSelectedHotelId(hotelId);
   }
 
+  function handleLanguageChange(nextLanguage: AdminLanguage) {
+    localStorage.setItem('hotel-booking.admin-language', nextLanguage);
+    setLanguage(nextLanguage);
+  }
+
   return (
     <AppLayout
       selectedHotelId={selectedHotelId}
       onHotelChange={handleHotelChange}
       hotels={hotels}
+      language={language}
+      onLanguageChange={handleLanguageChange}
     >
       {pages[path] ?? <DashboardPage hotelId={selectedHotelId} />}
     </AppLayout>

@@ -25,10 +25,18 @@ The main users are trusted owners and managers. Existing staff may continue usin
 
 - Users must not be required to create an account to make a booking.
 - Registered customers must be able to authenticate securely.
+- Customer self-registration uses an email address as the sign-in identifier. Accounts remain disabled until the
+  customer follows a single-use, time-limited verification link sent to that address.
+- Customer registration requires a full name. Registered customers can update their name from the public account
+  area; their verified email address remains the sign-in identifier.
+- Email-verification tokens are stored only as hashes. Their encrypted event representation is used only to deliver
+  the verification email through notification-service; raw tokens must never be logged or persisted.
 - Staff users must have role-based permissions.
 - Administrators have full system access and are the only users allowed to create or promote Managers.
 - Managers can manage their assigned hotels and create Staff accounts, but cannot create or promote Administrators or Managers.
 - Staff members are assigned to at least one hotel and have operational access only to their assigned hotels.
+- The administration interface presents operational Staff accounts separately from registered Customer accounts.
+  Each view requests only its relevant role category from identity-service.
 - A guest must be able to access a booking through a secure, expiring email link.
 - Guest access must be limited to the specific booking represented by the link.
 - Guest access links must remain valid for early bookings until the checkout date, followed by a configurable post-checkout grace period.
@@ -54,6 +62,8 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Guests select one or more room types, never a specific physical room number.
 - A reservation reserves capacity in its selected room types for the stay; the system automatically assigns a suitable physical room for each item as an internal operational concern.
 - Staff must be able to assign or change the physical room for each reservation item, subject to hotel, room-type, status, maintenance, and overlapping-reservation validation.
+- All public user input must be validated on the server, regardless of client-side validation. Accepted text must be normalized before storage or delivery, control characters must be rejected where inappropriate, and output must be safely encoded for its destination rather than relying on destructive blanket sanitization.
+- Public contact messages must be delivered to the hotel email address and retained in a hotel-scoped admin inbox. Staff with notification-management permission can view paginated message history, delivery status, sender details, and unread/read state.
 - One reservation may contain multiple rooms.
 - Guests must be able to create a reservation without an account.
 - The system must prevent overbooking a room type and prevent conflicting reservations for the same assigned room and dates.
@@ -73,7 +83,16 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Guests may provide arrival details and special requests in a free-text notes field.
 - Guest name, phone number, and guest count are required for an unauthenticated booking.
 - Guest email is optional for unauthenticated bookings but recommended for confirmations and management information.
+- A public booking must require affirmative acceptance of the privacy notice. The booking service records the
+  acceptance timestamp for operational auditability; the final notice wording, retention policy, and contact details
+  require review for the hotel’s real legal context.
 - A reservation can be created without payment when the hotel permits pay-later bookings.
+- Online payment must support credit/debit cards, PayPal, Multibanco references, and MB WAY. `PaymentMode`
+  distinguishes online payment from pay-at-reception; a separate `PaymentMethod` records the selected channel.
+- Each hotel configures which online payment methods it offers. A payment attempt records the provider reference and
+  lifecycle independently from the reservation; an online reservation remains held until payment succeeds or expires.
+- A local-only hosted-checkout simulator may exercise the redirect/callback flow during development. It must be disabled
+  outside local development and must never collect or process card details.
 - Staff must be able to manually confirm eligible pending or held reservations.
 - Temporary holds must expire automatically and release their rooms when their expiration time is reached.
 - Reservation prices are frozen when the reservation is created.
@@ -96,7 +115,7 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Booking confirmation emails must be sent asynchronously where practical.
 - Notifications must be retryable and idempotent.
 - Failed notifications must be observable and recoverable.
-- Reservation notification events must use a transactional outbox. Failed delivery attempts use exponential backoff,
+- Reservation and identity notification events must use a transactional outbox. Failed delivery attempts use exponential backoff,
   become terminal after a configured maximum, and can be inspected and manually replayed by staff assigned to the
   relevant hotel.
 - Email is the first notification channel. SMS delivery for phone-only bookings is a later provider integration.
@@ -114,6 +133,15 @@ The main users are trusted owners and managers. Existing staff may continue usin
   5. System default language
 - The system default language is English.
 - Frontend interface translations are separate from hotel content translations.
+- The public site and admin panel initially support English and Portuguese interface text. The public site stores the
+  visitor’s interface choice locally and forwards it as `Accept-Language` when retrieving translated hotel content.
+- The public site provides a complete hotel presentation rather than only a booking form: a landing page, a dedicated
+  page for every active room type, a photo gallery, destination/experience content, contact and location information,
+  a site-wide footer, privacy information, and direct booking calls to action.
+- The contact page embeds the configured hotel location through Google Maps and submits enquiries to the notification
+  service. The backend resolves the recipient from the hotel's notification settings; clients cannot choose an
+  arbitrary recipient. Contact submissions require explicit privacy consent, are length-validated, include a hidden
+  anti-bot field, are rate-limited at the gateway, and use the persisted notification retry mechanism.
 
 ## Non-functional requirements
 
@@ -127,6 +155,11 @@ The main users are trusted owners and managers. Existing staff may continue usin
 - Important actions must be auditable.
 - APIs must validate input and return consistent error responses.
 - The system must provide health checks, structured logs, and basic observability.
+- Synchronous cross-service calls must use bounded connection/read timeouts and circuit breakers.
+- Automatic retries must be short and limited to transient failures. The gateway must retry only idempotent read
+  requests; write requests must not be retried automatically.
+- Booking must fail safely when authoritative hotel availability or pricing cannot be retrieved. The system must
+  never invent or silently reuse stale availability or price data as a resilience fallback.
 - Personal data must be handled according to applicable GDPR principles.
 
 ## Client applications
@@ -150,7 +183,7 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Kubernetes
 - Multi-region deployment
 - Event sourcing and CQRS
-- Complex payment workflows
+- Live payment-provider implementation, refunds, chargebacks, and reconciliation workflows
 - Full hotel accounting
 - Channel-manager integrations with booking platforms
 - Housekeeping and maintenance workflows
@@ -163,6 +196,7 @@ The exact extraction boundaries may evolve as the domain becomes clearer.
 - Seasonal pricing and minimum-stay rules.
 - Email provider selection.
 - Exact staff roles and permissions.
+- Payment provider selection and the legal/business rules for refunds, chargebacks, and payment reconciliation.
 
 ## Reservation policy decisions
 

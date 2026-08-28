@@ -75,7 +75,9 @@ class ReservationServiceTests {
                 null,
                 List.of("room-1"),
                 null,
-                null);
+                null,
+                null,
+                true);
         when(hotelCatalogClient.getHotel("hotel-1")).thenReturn(hotel(false));
 
         assertThatThrownBy(() -> reservationService.create(request))
@@ -235,7 +237,7 @@ class ReservationServiceTests {
         ReservationRequest request = new ReservationRequest(
                 hotelId, "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
-                List.of("room-1"), null, null);
+                List.of("room-1"), null, null, null, true);
         UUID roomTypeId = UUID.randomUUID();
         when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
                 roomTypeId, UUID.fromString(hotelId), 2, true));
@@ -260,7 +262,7 @@ class ReservationServiceTests {
         ReservationRequest request = new ReservationRequest(
                 hotelId, "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
-                List.of("room-1"), null, null);
+                List.of("room-1"), null, null, null, true);
         UUID roomTypeId = UUID.randomUUID();
         when(hotelCatalogClient.getRoomType("room-1")).thenReturn(new HotelCatalogClient.RoomTypeDetails(
                 roomTypeId, UUID.fromString(hotelId), 2, true));
@@ -369,6 +371,6 @@ class ReservationServiceTests {
         return new ReservationRequest(
                 "hotel-1", "Guest", "+351000000000", null, 1,
                 LocalDate.now().plusDays(10), LocalDate.now().plusDays(12), null,
-                List.of(roomId), null, null);
+                List.of(roomId), null, null, null, true);
     }
 }

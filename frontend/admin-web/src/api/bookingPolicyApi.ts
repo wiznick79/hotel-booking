@@ -6,6 +6,7 @@ export type BookingPolicy = {
   maxUnconfirmedBookings: number;
   holdDurationMinutes: number;
   cancellationDeadlineDays: number;
+  enabledOnlinePaymentMethods: string[];
 };
 
 export function findBookingPolicy(accessToken: string, hotelId: string) {

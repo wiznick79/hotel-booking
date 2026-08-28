@@ -3,6 +3,7 @@ import { get, patch, post } from './httpClient';
 export type CurrentUser = {
   id: number;
   username: string;
+  fullName: string | null;
   enabled: boolean;
   roles: string[];
   hotelIds: string[];
@@ -12,8 +13,8 @@ export function findCurrentUser(accessToken: string) {
   return get<CurrentUser>('/users/me', accessToken);
 }
 
-export function findUsers(accessToken: string) {
-  return get<CurrentUser[]>('/users', accessToken);
+export function findUsers(accessToken: string, category: 'STAFF' | 'CUSTOMERS') {
+  return get<CurrentUser[]>(`/users?category=${category}`, accessToken);
 }
 
 export function createUser(accessToken: string, request: { username: string; password: string; roles: string[]; hotelIds: string[] }) {

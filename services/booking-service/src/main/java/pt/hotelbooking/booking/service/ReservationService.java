@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
+import pt.hotelbooking.booking.model.dto.ReservationCreationResponse;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
+import pt.hotelbooking.booking.model.dto.PaymentAttemptResponse;
 import pt.hotelbooking.booking.model.dto.AvailabilitySearchResponse;
 import pt.hotelbooking.booking.model.entity.Reservation;
 import pt.hotelbooking.booking.model.entity.ReservationStatus;
@@ -12,8 +14,11 @@ import pt.hotelbooking.booking.model.entity.AuditLog;
 import pt.hotelbooking.booking.repository.ReservationRepository;
 import pt.hotelbooking.booking.repository.AuditLogRepository;
 import pt.hotelbooking.booking.repository.BookingPolicyRepository;
+import pt.hotelbooking.booking.repository.PaymentAttemptRepository;
 import pt.hotelbooking.booking.integration.HotelCatalogClient;
 import pt.hotelbooking.booking.model.entity.BookingPolicy;
+import pt.hotelbooking.booking.model.entity.PaymentMethod;
+import pt.hotelbooking.booking.model.entity.PaymentMode;
 import pt.hotelbooking.booking.exception.ReservationNotFoundException;
 import pt.hotelbooking.booking.exception.RoomReassignmentException;
 import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
@@ -33,6 +38,7 @@ import java.util.UUID;
 public class ReservationService {
     private final ReservationRepository reservationRepo;
     private final BookingPolicyRepository policyRepo;
+    private final PaymentAttemptRepository paymentAttemptRepository;
     private final HotelCatalogClient hotelCatalogClient;
 
     private final GuestAccessService guestAccessService;
@@ -41,11 +47,13 @@ public class ReservationService {
 
     private final DiscountCodeService discountCodeService;
 
+    private final PaymentService paymentService;
+
     private final AuditLogRepository auditLogRepository;
 
     @Transactional(readOnly = true)
     public ReservationResponse findById(java.util.UUID id) {
-        return ReservationResponse.from(reservationRepo.findById(id)
+        return toResponse(reservationRepo.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id)));
     }
 
@@ -75,7 +83,7 @@ public class ReservationService {
                         to,
                         from)
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -94,7 +102,7 @@ public class ReservationService {
                         List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
                                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN))
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -102,7 +110,7 @@ public class ReservationService {
     public List<ReservationResponse> findMyReservations(String customerUsername) {
         return reservationRepo.findByCustomerUsernameOrderByCheckInDateDesc(customerUsername)
                 .stream()
-                .map(ReservationResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -208,7 +216,7 @@ public class ReservationService {
                 "Reservation confirmed by staff."));
         publishReservationEvent("ReservationConfirmed", reservation);
 
-        return ReservationResponse.from(reservation);
+        return toResponse(reservation);
     }
 
     @Transactional
@@ -335,11 +343,18 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse create(ReservationRequest request) {
-        return create(request, null);
+        return createReservation(request, null).reservation();
     }
 
     @Transactional
     public ReservationResponse create(ReservationRequest request, String customerUsername) {
+        return createReservation(request, customerUsername).reservation();
+    }
+
+    @Transactional
+    public ReservationCreationResponse createReservation(
+            ReservationRequest request,
+            String customerUsername) {
         if (!request.checkOutDate().isAfter(request.checkInDate())) {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
@@ -352,20 +367,29 @@ public class ReservationService {
         BigDecimal totalPrice = validateAndQuoteRoomTypes(request.hotelId(), request.roomTypeIds(),
                 request.guestCount(), request.checkInDate(), request.checkOutDate());
 
+        PaymentMethod paymentMethod = resolvePaymentMethod(request);
+        PaymentMode paymentMode = resolvePaymentMode(request, paymentMethod);
+
         BookingPolicy policy = policyRepo.findByHotelId(request.hotelId()).orElse(null);
-        if (request.paymentMode() == pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
+        if (paymentMode == PaymentMode.PAY_AT_RECEPTION
                 && policy != null && !policy.isPayLaterAllowed()) {
             throw new IllegalStateException("This hotel requires payment before booking confirmation.");
         }
-        if (request.paymentMode() == pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
+        if (paymentMode == PaymentMode.PAY_AT_RECEPTION
                 && policy != null && policy.getMaxUnconfirmedBookings() > 0
                 && reservationRepo.countByHotelIdAndStatusIn(request.hotelId(),
                 List.of(ReservationStatus.PENDING, ReservationStatus.HELD)) >= policy.getMaxUnconfirmedBookings()) {
             throw new IllegalStateException("The hotel has reached its limit for unpaid bookings.");
         }
 
+        if (paymentMode == PaymentMode.PAY_NOW && (policy == null
+                || !policy.getEnabledOnlinePaymentMethods().contains(paymentMethod))) {
+            throw new IllegalStateException("The selected online payment method is not enabled for this hotel.");
+        }
+
         Reservation reservation = new Reservation(request.hotelId(), request.guestName(), request.guestPhone(),
                 request.guestEmail(), request.guestCount(), request.checkInDate(), request.checkOutDate(), request.notes());
+        reservation.recordPrivacyNoticeAcceptance();
         if (customerUsername != null) {
             reservation.assignCustomer(customerUsername);
         }
@@ -376,10 +400,7 @@ public class ReservationService {
                 request.checkOutDate());
         reservation.configureGuestAccess(guestAccessToken.hash(), guestAccessToken.expiresAt());
 
-        pt.hotelbooking.booking.model.entity.PaymentMode paymentMode = request.paymentMode() == null
-                ? pt.hotelbooking.booking.model.entity.PaymentMode.PAY_AT_RECEPTION
-                : request.paymentMode();
-        reservation.configurePayment(paymentMode, paymentMode != pt.hotelbooking.booking.model.entity.PaymentMode.PAY_NOW);
+        reservation.configurePayment(paymentMode, paymentMethod, paymentMode != PaymentMode.PAY_NOW);
         reservation.applyPriceSnapshot(totalPrice, "EUR");
 
         DiscountCodeService.DiscountResult discount = discountCodeService.apply(
@@ -389,6 +410,10 @@ public class ReservationService {
                 request.checkInDate());
         reservation.applyPriceSnapshot(discount.total(), "EUR");
         reservation.applyDiscountSnapshot(discount.code(), discount.amount());
+
+        if (paymentMode == PaymentMode.PAY_NOW) {
+            reservation.placeHold(Instant.now().plus(policy.getHoldDuration()));
+        }
 
         Reservation savedReservation = reservationRepo.save(reservation);
         eventPublisher.publish(new ReservationCreatedEvent(
@@ -403,7 +428,25 @@ public class ReservationService {
                 savedReservation.getCurrency(), hotel.name(), hotel.notificationDisplayName(),
                 hotel.notificationFromAddress(), hotel.notificationReplyToAddress()));
 
-        return ReservationResponse.from(savedReservation);
+        return new ReservationCreationResponse(
+                ReservationResponse.from(savedReservation),
+                guestAccessToken.rawToken());
+    }
+
+    @Transactional
+    public PaymentAttemptResponse initiateGuestPayment(String rawToken) {
+        Reservation reservation = reservationRepo.findByGuestAccessTokenHash(guestAccessService.hash(rawToken))
+                .orElseThrow(() -> new ReservationNotFoundException("Guest reservation not found."));
+
+        if (!reservation.hasValidGuestAccess(Instant.now())) {
+            throw new ReservationNotFoundException("Guest reservation not found.");
+        }
+
+        if (reservation.getPaymentMode() != PaymentMode.PAY_NOW) {
+            throw new IllegalStateException("This reservation does not require online payment.");
+        }
+
+        return paymentService.initiate(reservation);
     }
 
     @Transactional
@@ -473,6 +516,7 @@ public class ReservationService {
 
         for (Reservation reservation : expiredReservations) {
             reservation.expireHold();
+            paymentService.expirePendingAttempts(reservation);
             auditLogRepository.save(new AuditLog(
                     "system",
                     "RESERVATION_HOLD_EXPIRED",
@@ -561,6 +605,36 @@ public class ReservationService {
     private List<ReservationStatus> blockingStatuses() {
         return List.of(ReservationStatus.PENDING, ReservationStatus.HELD,
                 ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN);
+    }
+
+    private PaymentMethod resolvePaymentMethod(ReservationRequest request) {
+        PaymentMethod paymentMethod = request.paymentMethod() == null
+                ? PaymentMethod.PAY_AT_RECEPTION
+                : request.paymentMethod();
+
+        if (request.paymentMode() == PaymentMode.PAY_AT_RECEPTION && paymentMethod.requiresOnlineProvider()) {
+            throw new IllegalArgumentException("An online payment method requires PAY_NOW.");
+        }
+
+        return paymentMethod;
+    }
+
+    private PaymentMode resolvePaymentMode(ReservationRequest request, PaymentMethod paymentMethod) {
+        PaymentMode paymentMode = request.paymentMode() == null
+                ? paymentMethod.requiresOnlineProvider() ? PaymentMode.PAY_NOW : PaymentMode.PAY_AT_RECEPTION
+                : request.paymentMode();
+
+        if (paymentMode == PaymentMode.PAY_NOW && !paymentMethod.requiresOnlineProvider()) {
+            throw new IllegalArgumentException("PAY_NOW requires an online payment method.");
+        }
+
+        return paymentMode;
+    }
+
+    private ReservationResponse toResponse(Reservation reservation) {
+        return paymentAttemptRepository.findFirstByReservationOrderByCreatedAtDesc(reservation)
+                .map(paymentAttempt -> ReservationResponse.from(reservation, paymentAttempt))
+                .orElseGet(() -> ReservationResponse.from(reservation));
     }
 
     private boolean hasAvailableRoomTypeCapacity(

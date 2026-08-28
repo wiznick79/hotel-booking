@@ -70,3 +70,5 @@ The initial weekend convention is Friday and Saturday nights. Sunday uses the no
 ## Communication
 
 Email is the initial confirmation and secure-link channel. Guest access tokens are stored only as hashes and expire after the reservation checkout date plus a configurable grace period. SMS can be added later for phone-only bookings, but it requires an external SMS provider, delivery-status handling, costs, rate limiting, and privacy controls.
+
+Public bookings require affirmative acceptance of the privacy notice. The booking service stores the acceptance flag and timestamp with the reservation; this is an operational audit record, not a substitute for a legally reviewed privacy programme.

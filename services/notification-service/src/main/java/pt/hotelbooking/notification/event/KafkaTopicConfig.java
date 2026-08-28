@@ -29,4 +29,20 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    NewTopic identityEventsTopic(@Value("${identity-events.topic:identity-events}") String topic) {
+        return TopicBuilder.name(topic)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic identityEventsDeadLetterTopic(@Value("${identity-events.topic:identity-events}") String topic) {
+        return TopicBuilder.name(topic + ".DLT")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
 }

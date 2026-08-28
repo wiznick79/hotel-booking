@@ -21,8 +21,14 @@ public class ReservationEventKafkaListener {
     private final ObjectMapper objectMapper;
     private final NotificationProcessor notificationProcessor;
 
-    @KafkaListener(topics = "${booking-events.topic}")
+    @KafkaListener(topics = {"${booking-events.topic}", "${identity-events.topic:identity-events}"})
     public void consume(String payload, @Header("eventType") String eventType) throws Exception {
+        if ("CustomerRegistrationRequested".equals(eventType)) {
+            notificationProcessor.processCustomerRegistration(
+                    objectMapper.readValue(payload, CustomerRegistrationRequestedEvent.class));
+            return;
+        }
+
         if ("ReservationCreated".equals(eventType)) {
             notificationProcessor.processReservationCreated(
                     objectMapper.readValue(payload, ReservationCreatedEvent.class));

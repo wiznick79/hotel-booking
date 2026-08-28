@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import pt.hotelbooking.notification.event.ReservationCreatedEvent;
 import pt.hotelbooking.notification.event.ReservationNotificationEvent;
+import pt.hotelbooking.notification.event.CustomerRegistrationRequestedEvent;
 import pt.hotelbooking.notification.model.Notification;
 import pt.hotelbooking.notification.model.NotificationStatus;
 import pt.hotelbooking.notification.repository.NotificationRepository;
@@ -21,9 +22,11 @@ public class NotificationProcessor {
 
     private final GuestAccessTokenCipher guestAccessTokenCipher;
 
+    private final AccountVerificationTokenCipher accountVerificationTokenCipher;
+
     private final EmailSender emailSender;
 
-    @Value("${public-frontend.base-url:http://localhost:3000}")
+    @Value("${public-frontend.base-url:http://localhost:3002}")
     private String publicFrontendBaseUrl;
 
     @Value("${notification.maximum-attempts:3}")
@@ -44,6 +47,23 @@ public class NotificationProcessor {
                 event.checkInDate(), event.checkOutDate(), event.totalPrice(), event.currency(),
                 event.eventType(), null, event.hotelName(), event.notificationDisplayName(),
                 event.notificationFromAddress(), event.notificationReplyToAddress());
+    }
+
+    @Transactional
+    public void processCustomerRegistration(CustomerRegistrationRequestedEvent event) {
+        String subject = "Verify your hotel booking account";
+        if (notificationRepository.existsByReferenceIdAndSubject(event.eventId(), subject)) {
+            return;
+        }
+
+        String verificationLink = publicFrontendBaseUrl + "/#/verify-account?token="
+                + accountVerificationTokenCipher.decrypt(event.encryptedVerificationToken());
+        notificationRepository.save(new Notification(
+                event.eventId(),
+                event.email(),
+                subject,
+                "Welcome to Hotel Booking. Verify your email address to activate your account: "
+                        + verificationLink));
     }
 
     private void process(java.util.UUID reservationId, String hotelId, String guestEmail, String guestName,
@@ -70,7 +90,7 @@ public class NotificationProcessor {
                 hotelId,
                 guestEmail,
                 subject,
-                "Hello " + guestName + ", your reservation at " + hotelNameForMessage + " is: " + eventType
+                "Hello " + guestName + ", " + messageFor(eventType) + " at " + hotelNameForMessage
                         + ". Stay: " + checkInDate + " to " + checkOutDate
                         + ". Total: " + totalPrice + " " + currency + "." + accessLink,
                 senderDisplayName, senderFromAddress, senderReplyToAddress));
@@ -83,6 +103,17 @@ public class NotificationProcessor {
             case "ReservationCancelled" -> "Hotel booking cancelled";
             case "ReservationHoldExpired" -> "Hotel booking hold expired";
             default -> "Hotel booking confirmation";
+        };
+    }
+
+    private String messageFor(String eventType) {
+        return switch (eventType) {
+            case "ReservationCreated" -> "we have received your booking request";
+            case "ReservationModified" -> "your booking has been updated";
+            case "ReservationConfirmed" -> "your booking is confirmed";
+            case "ReservationCancelled" -> "your booking has been cancelled";
+            case "ReservationHoldExpired" -> "your booking hold has expired";
+            default -> "there is an update to your booking";
         };
     }
 

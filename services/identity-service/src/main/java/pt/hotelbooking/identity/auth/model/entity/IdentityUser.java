@@ -31,9 +31,17 @@ public class IdentityUser {
 
     private String username;
 
+    private String email;
+
+    private String fullName;
+
     private String password;
 
     private boolean enabled = true;
+
+    private String emailVerificationTokenHash;
+
+    private java.time.Instant emailVerificationTokenExpiresAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -46,4 +54,23 @@ public class IdentityUser {
     @JoinTable(name = "identity_user_hotels", joinColumns = @JoinColumn(name = "user_id"))
     @jakarta.persistence.Column(name = "hotel_id", nullable = false)
     private Set<UUID> hotelIds = new HashSet<>();
+
+    public boolean hasValidEmailVerificationToken(String tokenHash, java.time.Instant now) {
+        return !enabled
+                && emailVerificationTokenHash != null
+                && emailVerificationTokenHash.equals(tokenHash)
+                && emailVerificationTokenExpiresAt != null
+                && emailVerificationTokenExpiresAt.isAfter(now);
+    }
+
+    public void prepareEmailVerification(String tokenHash, java.time.Instant expiresAt) {
+        emailVerificationTokenHash = tokenHash;
+        emailVerificationTokenExpiresAt = expiresAt;
+    }
+
+    public void verifyEmail() {
+        enabled = true;
+        emailVerificationTokenHash = null;
+        emailVerificationTokenExpiresAt = null;
+    }
 }

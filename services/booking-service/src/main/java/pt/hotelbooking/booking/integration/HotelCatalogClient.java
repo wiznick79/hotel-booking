@@ -17,14 +17,15 @@ import org.slf4j.MDC;
 @Component
 public class HotelCatalogClient {
     private final RestClient restClient;
-    private final String hotelServiceUrl;
+    private final HotelServiceResilience resilience;
 
     public HotelCatalogClient(
             RestClient.Builder restClientBuilder,
+            HotelServiceResilience resilience,
             @Value("${hotel-service.url:http://localhost:8081}") String hotelServiceUrl,
             @Value("${hotel-service.connect-timeout-ms:2000}") long connectTimeoutMs,
             @Value("${hotel-service.read-timeout-ms:5000}") long readTimeoutMs) {
-        this.hotelServiceUrl = hotelServiceUrl;
+        this.resilience = resilience;
 
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
@@ -34,6 +35,7 @@ public class HotelCatalogClient {
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
 
         this.restClient = restClientBuilder
+                .baseUrl(hotelServiceUrl)
                 .requestFactory(requestFactory)
                 .requestInterceptor((request, body, execution) -> {
                     String correlationId = MDC.get("correlationId");
@@ -48,17 +50,24 @@ public class HotelCatalogClient {
 
     public boolean roomExists(String roomId) {
         try {
-            restClient.get()
-                    .uri("/api/rooms/{id}", roomId).retrieve().toBodilessEntity();
+            executeHotelCall("verify room", () -> {
+                restClient.get()
+                        .uri("/api/rooms/{id}", roomId)
+                        .retrieve()
+                        .toBodilessEntity();
+
+                return true;
+            });
+
             return true;
-        } catch (RestClientResponseException exception) {
+        } catch (IllegalStateException exception) {
             return false;
         }
     }
 
     public RoomDetails getRoom(String roomId) {
         return executeHotelCall("retrieve room", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                         .uri("/api/rooms/{id}", roomId)
                         .retrieve()
                         .body(RoomDetails.class));
@@ -66,7 +75,7 @@ public class HotelCatalogClient {
 
     public RoomTypeDetails getRoomType(String roomTypeId) {
         return executeHotelCall("retrieve room type", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                         .uri("/api/room-types/{id}", roomTypeId)
                         .retrieve()
                         .body(RoomTypeDetails.class));
@@ -74,7 +83,7 @@ public class HotelCatalogClient {
 
     public java.util.List<RoomTypeCatalogItem> findRoomTypes() {
         RoomTypeCatalogItem[] roomTypes = executeHotelCall("retrieve room types", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                         .uri("/api/room-types")
                         .retrieve()
                         .body(RoomTypeCatalogItem[].class));
@@ -88,7 +97,7 @@ public class HotelCatalogClient {
             LocalDate checkInDate,
             LocalDate checkOutDate) {
         RoomDetails[] rooms = executeHotelCall("retrieve bookable rooms", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/rooms/bookable")
                             .queryParam("hotelId", hotelId)
@@ -108,7 +117,7 @@ public class HotelCatalogClient {
 
     public HotelDetails getHotel(String hotelId) {
         HotelDetails hotel = executeHotelCall("retrieve hotel", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                     .uri("/api/hotels/{id}", hotelId)
                     .retrieve()
                     .body(HotelDetails.class));
@@ -125,7 +134,7 @@ public class HotelCatalogClient {
             LocalDate checkInDate,
             LocalDate checkOutDate) {
         RateQuoteResponse response = executeHotelCall("quote room type", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/pricing-rules/quote")
                             .queryParam("roomTypeId", roomTypeId)
@@ -144,7 +153,7 @@ public class HotelCatalogClient {
 
     public boolean roomIsAvailable(String roomId, LocalDate checkInDate, LocalDate checkOutDate) {
         Boolean available = executeHotelCall("check room availability", () ->
-                restClient.mutate().baseUrl(hotelServiceUrl).build().get()
+                restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/room-unavailabilities/room/{roomId}/availability")
                             .queryParam("fromDate", checkInDate)
@@ -157,16 +166,26 @@ public class HotelCatalogClient {
     }
 
     private <T> T executeHotelCall(String operation, Supplier<T> request) {
-        try {
-            return request.get();
-        } catch (RestClientResponseException exception) {
-            throw new IllegalStateException(
-                    "Hotel service rejected the request to " + operation
-                            + " with HTTP " + exception.getStatusCode() + ".",
-                    exception);
-        } catch (RestClientException exception) {
-            throw new IllegalStateException("Hotel service is unavailable while attempting to " + operation + ".", exception);
-        }
+        return resilience.execute(operation, () -> {
+            try {
+                return request.get();
+            } catch (RestClientResponseException exception) {
+                if (exception.getStatusCode().is5xxServerError()) {
+                    throw new HotelServiceUnavailableException(
+                            "Hotel service failed while attempting to " + operation + ".",
+                            exception);
+                }
+
+                throw new IllegalStateException(
+                        "Hotel service rejected the request to " + operation
+                                + " with HTTP " + exception.getStatusCode() + ".",
+                        exception);
+            } catch (RestClientException exception) {
+                throw new HotelServiceUnavailableException(
+                        "Hotel service is unavailable while attempting to " + operation + ".",
+                        exception);
+            }
+        });
     }
 
     public record RoomDetails(

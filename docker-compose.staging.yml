@@ -55,6 +55,8 @@ services:
 
   booking-service:
     ports: !reset []
+    environment:
+      PAYMENT_LOCAL_SIMULATION_ENABLED: "false"
 
   identity-service:
     ports: !reset []

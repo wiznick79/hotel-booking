@@ -57,6 +57,7 @@ main:not(.login-page) { margin: 0 auto; max-width: 75rem; padding: 2.5rem 2rem; 
 .calendar-toolbar h2 { margin: 0; }
 .calendar-toolbar p { color: #61707c; line-height: 1.5; margin: .45rem 0 0; }
 .calendar-navigation { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.table-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
 .availability-grid { min-width: 52rem; overflow: auto; }
 .availability-grid-row { display: grid; grid-template-columns: minmax(10rem, 1.4fr) repeat(7, minmax(5.5rem, 1fr)); }
 .availability-grid-row > div { border-bottom: 1px solid #edf0f2; border-right: 1px solid #edf0f2; min-height: 4.25rem; padding: .75rem; }
@@ -108,10 +109,21 @@ tbody tr:last-child td { border-bottom: 0; }
 .login-page { align-items: center; background: linear-gradient(135deg, #f5f6f8 0%, #e6ebed 100%); display: flex; justify-content: center; min-height: 100vh; padding: 1.5rem; }
 .login-card { background: #fff; border: 1px solid #e1e5e8; border-radius: .85rem; box-shadow: 0 1rem 3rem rgb(20 37 47 / 10%); max-width: 25rem; padding: 2rem; text-align: center; width: 100%; }
 .login-card .brand-mark { margin-bottom: 1.25rem; }
+.login-language { border: 1px solid #c9d2d8; border-radius: .4rem; color: #26343e; float: right; padding: .4rem; }
 .login-card form { display: grid; gap: 1rem; margin-top: 1.75rem; text-align: left; }
 .login-card label { display: grid; font-size: .9rem; font-weight: 650; gap: .45rem; }
 .login-card input { border: 1px solid #c9d2d8; border-radius: .4rem; padding: .7rem; }
 .login-card input:focus, .topbar select:focus { outline: 3px solid rgb(187 165 119 / 35%); outline-offset: 1px; }
 .form-error { color: #b42318; font-size: .9rem; margin: 0; }
+.contact-message-table { margin-top: 1rem; }
+.unread-message { background: #f7f2e8; }
+.unread-message td:first-child { box-shadow: inset .25rem 0 #b79a61; }
+.pagination-bar { align-items: center; display: flex; gap: 1rem; justify-content: center; margin-top: 1.25rem; }
+.contact-message-detail { margin-top: 1.5rem; }
+.contact-message-detail h2 { margin: 0; }
+.contact-message-detail a { color: #284b63; }
+.contact-message-body { border-top: 1px solid #e2e6e9; margin-top: 1.5rem; padding-top: 1.5rem; }
+.contact-message-body h3 { margin: 0 0 .75rem; }
+.contact-message-body p { line-height: 1.65; margin: 0; white-space: pre-wrap; }
 .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 @media (max-width: 48rem) { .app-shell { display: block; } .sidebar { padding: 1rem; } .sidebar .brand { margin-bottom: 1rem; } .sidebar nav { display: flex; overflow-x: auto; } .sidebar a { white-space: nowrap; } .topbar, main:not(.login-page) { padding-left: 1rem; padding-right: 1rem; } .filter-bar, .calendar-toolbar { align-items: stretch; flex-direction: column; } .calendar-navigation { justify-content: flex-start; } .hotel-form, .annual-date-range { grid-template-columns: 1fr; } }

@@ -5,9 +5,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pt.hotelbooking.booking.model.dto.ReservationRequest;
+import pt.hotelbooking.booking.model.dto.ReservationCreationResponse;
 import pt.hotelbooking.booking.model.dto.ReservationResponse;
+import pt.hotelbooking.booking.model.dto.PaymentAttemptResponse;
 import pt.hotelbooking.booking.model.dto.RoomAssignmentRequest;
 import pt.hotelbooking.booking.model.dto.ReservationModificationRequest;
 import pt.hotelbooking.booking.service.ReservationService;
@@ -35,15 +38,23 @@ public class ReservationController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ReservationResponse create(
+    public ResponseEntity<ReservationResponse> create(
             @Valid @RequestBody ReservationRequest request,
             Authentication authentication) {
         String customerUsername = authentication != null && authentication.isAuthenticated()
                 ? authentication.getName()
                 : null;
 
-        return reservationService.create(request, customerUsername);
+        ReservationCreationResponse creation = reservationService.createReservation(request, customerUsername);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header("X-Guest-Access-Token", creation.guestAccessToken())
+                .body(creation.reservation());
+    }
+
+    @PostMapping("/guest/{token}/payment")
+    public PaymentAttemptResponse initiateGuestPayment(@PathVariable String token) {
+        return reservationService.initiateGuestPayment(token);
     }
 
     @PutMapping("/{id}/customer")

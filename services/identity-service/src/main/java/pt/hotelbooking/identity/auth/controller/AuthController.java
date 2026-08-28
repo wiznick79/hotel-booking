@@ -17,6 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import jakarta.validation.Valid;
+import pt.hotelbooking.identity.auth.model.dto.CustomerRegistrationRequest;
+import pt.hotelbooking.identity.auth.model.dto.EmailVerificationRequest;
+import pt.hotelbooking.identity.auth.service.IdentityUserService;
 
 import java.time.Duration;
 
@@ -30,6 +34,8 @@ public class AuthController {
     private final IdentityUserRepository userRepository;
 
     private final AuthenticationTokenService authenticationTokenService;
+
+    private final IdentityUserService identityUserService;
 
     @Value("${auth.refresh-cookie.secure:false}")
     private boolean refreshCookieSecure;
@@ -66,6 +72,17 @@ public class AuthController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie().toString())
                 .build();
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<Void> register(@Valid @RequestBody CustomerRegistrationRequest request) {
+        identityUserService.registerCustomer(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<TokenResponse> verifyEmail(@Valid @RequestBody EmailVerificationRequest request) {
+        return responseWithRefreshCookie(identityUserService.verifyCustomerEmail(request));
     }
 
     private ResponseEntity<TokenResponse> responseWithRefreshCookie(

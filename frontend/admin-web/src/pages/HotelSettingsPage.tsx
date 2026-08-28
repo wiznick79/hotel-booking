@@ -131,6 +131,30 @@ export function HotelSettingsPage({ hotelId }: { hotelId: string }) {
         <h2>Booking policy</h2>
         <form className="hotel-form" onSubmit={savePolicy}>
           <label className="full-width checkbox-label"><input type="checkbox" checked={policy.payLaterAllowed} onChange={(event) => setPolicy({ ...policy, payLaterAllowed: event.target.checked })} /> Allow pay at reception</label>
+          <fieldset className="full-width payment-methods">
+            <legend>Online payment methods</legend>
+            <p>These methods appear on the public booking form. Real provider credentials are configured separately.</p>
+            {[
+              ['CARD', 'Credit or debit card'],
+              ['PAYPAL', 'PayPal'],
+              ['MULTIBANCO', 'Multibanco'],
+              ['MB_WAY', 'MB WAY'],
+            ].map(([method, label]) => (
+              <label className="checkbox-label" key={method}>
+                <input
+                  checked={policy.enabledOnlinePaymentMethods.includes(method)}
+                  onChange={(event) => setPolicy({
+                    ...policy,
+                    enabledOnlinePaymentMethods: event.target.checked
+                      ? [...policy.enabledOnlinePaymentMethods, method]
+                      : policy.enabledOnlinePaymentMethods.filter((currentMethod) => currentMethod !== method),
+                  })}
+                  type="checkbox"
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
           <label>Maximum unconfirmed bookings<input type="number" min="0" value={policy.maxUnconfirmedBookings} onChange={(event) => setPolicy({ ...policy, maxUnconfirmedBookings: Number(event.target.value) })} required /></label>
           <label>Temporary hold (minutes)<input type="number" min="1" value={policy.holdDurationMinutes} onChange={(event) => setPolicy({ ...policy, holdDurationMinutes: Number(event.target.value) })} required /></label>
           <label>Cancellation deadline (days)<input type="number" min="0" value={policy.cancellationDeadlineDays} onChange={(event) => setPolicy({ ...policy, cancellationDeadlineDays: Number(event.target.value) })} required /></label>
@@ -153,5 +177,6 @@ function defaultPolicy(hotelId: string): BookingPolicy {
     maxUnconfirmedBookings: 0,
     holdDurationMinutes: 30,
     cancellationDeadlineDays: 2,
+    enabledOnlinePaymentMethods: [],
   };
 }

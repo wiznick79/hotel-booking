@@ -6,3 +6,7 @@ notification:
   kafka:
     listener:
       enabled: false
+
+booking-events:
+  topics:
+    auto-create: false

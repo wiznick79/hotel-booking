@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.hotelbooking.identity.auth.model.dto.CreateUserRequest;
 import pt.hotelbooking.identity.auth.model.dto.ChangeOwnPasswordRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdatePasswordRequest;
+import pt.hotelbooking.identity.auth.model.dto.UpdateOwnProfileRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdateRolesRequest;
 import pt.hotelbooking.identity.auth.model.dto.UpdateHotelAssignmentsRequest;
 import pt.hotelbooking.identity.auth.model.dto.UserResponse;
@@ -34,13 +35,33 @@ public class IdentityUserController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('USER_MANAGE') or hasAuthority('STAFF_MANAGE')")
-    public List<UserResponse> findAll(Authentication authentication) {
+    public List<UserResponse> findAll(
+            Authentication authentication,
+            @RequestParam(required = false) UserCategory category) {
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
-        List<pt.hotelbooking.identity.auth.model.entity.IdentityUser> users = isAdmin
-                ? userService.findAll()
-                : userService.findStaffAssignedTo(hotelIds(authentication));
+        List<pt.hotelbooking.identity.auth.model.entity.IdentityUser> users;
+
+        if (category == UserCategory.CUSTOMERS) {
+            if (!isAdmin) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Only administrators can manage customer accounts.");
+            }
+            users = userService.findByRoleNames(java.util.Set.of("CUSTOMER"));
+        } else if (isAdmin && category == UserCategory.STAFF) {
+            users = userService.findByRoleNames(java.util.Set.of("ADMIN", "MANAGER", "STAFF"));
+        } else if (isAdmin) {
+            users = userService.findAll();
+        } else {
+            users = userService.findStaffAssignedTo(hotelIds(authentication));
+        }
+
         return users.stream().map(UserResponse::from).toList();
+    }
+
+    public enum UserCategory {
+        STAFF,
+        CUSTOMERS
     }
 
     @GetMapping("/me")
@@ -56,6 +77,16 @@ public class IdentityUserController {
             Authentication authentication,
             @Valid @RequestBody ChangeOwnPasswordRequest request) {
         userService.changeOwnPassword(authentication.getName(), request);
+    }
+
+    @PatchMapping("/me/profile")
+    @PreAuthorize("isAuthenticated()")
+    public UserResponse updateOwnProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateOwnProfileRequest request) {
+        return UserResponse.from(userService.updateOwnProfile(
+                authentication.getName(),
+                request.fullName()));
     }
 
     @PostMapping

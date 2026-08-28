@@ -14,6 +14,8 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 server:
   port: 8083
@@ -43,3 +45,18 @@ logging:
 jwt:
   private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
   public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
+
+identity-events:
+  topic: identity-events
+  topics:
+    auto-create: ${IDENTITY_EVENTS_TOPICS_AUTO_CREATE:true}
+
+identity:
+  outbox:
+    dispatch-delay-ms: 5000
+    maximum-attempts: 8
+    initial-retry-delay-seconds: 30
+    maximum-retry-delay-seconds: 3600
+
+account-verification:
+  encryption-secret: ${ACCOUNT_VERIFICATION_ENCRYPTION_SECRET:change-this-development-secret}
