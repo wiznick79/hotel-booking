@@ -135,6 +135,7 @@ Both reservation and identity topics have dead-letter topics for unprocessable m
 - **Flyway** owns schema evolution. Each service has a V1 creation migration; subsequent schema changes must be new versioned migrations, never edits to an already-applied migration.
 - **Hibernate/JPA** maps each service's own entities. Production-style PostgreSQL profiles use Flyway rather than Hibernate schema updates.
 - **Redis 7** is used for gateway rate limiting and hotel-service caching. Cache failures are logged and treated as cache misses, allowing PostgreSQL reads to continue.
+- **Website media** metadata belongs to hotel-service. Local uploads use a dedicated persistent Docker volume through a storage abstraction that can later be implemented with S3.
 
 ## Security
 

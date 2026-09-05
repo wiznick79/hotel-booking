@@ -125,5 +125,18 @@ tbody tr:last-child td { border-bottom: 0; }
 .contact-message-body { border-top: 1px solid #e2e6e9; margin-top: 1.5rem; padding-top: 1.5rem; }
 .contact-message-body h3 { margin: 0 0 .75rem; }
 .contact-message-body p { line-height: 1.65; margin: 0; white-space: pre-wrap; }
+.media-manager { border-top: 1px solid #e2e6e9; margin-top: 1.5rem; padding-top: 1.5rem; }
+.media-manager h3, .media-manager p { margin: 0 0 .4rem; }
+.media-manager > small { color: #61707c; display: block; margin-top: .7rem; }
+.media-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); margin: 1rem 0; }
+.media-grid figure { border: 1px solid #dbe2e6; border-radius: .5rem; margin: 0; overflow: hidden; }
+.media-grid img { aspect-ratio: 4 / 3; display: block; object-fit: cover; width: 100%; }
+.media-grid figcaption { align-items: center; display: flex; font-size: .8rem; gap: .5rem; justify-content: space-between; padding: .6rem; }
+.media-grid figcaption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.media-delete { color: #9b2921; }
+.media-upload-form { align-items: end; display: grid; gap: .75rem; grid-template-columns: minmax(12rem, 1fr) minmax(15rem, 2fr) auto; margin-top: 1rem; }
+.media-upload-form label { display: grid; font-size: .85rem; font-weight: 650; gap: .4rem; }
+.media-upload-form input { border: 1px solid #c9d2d8; border-radius: .4rem; padding: .6rem; }
+.media-heading { align-items: start; display: flex; justify-content: space-between; }
 .visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-@media (max-width: 48rem) { .app-shell { display: block; } .sidebar { padding: 1rem; } .sidebar .brand { margin-bottom: 1rem; } .sidebar nav { display: flex; overflow-x: auto; } .sidebar a { white-space: nowrap; } .topbar, main:not(.login-page) { padding-left: 1rem; padding-right: 1rem; } .filter-bar, .calendar-toolbar { align-items: stretch; flex-direction: column; } .calendar-navigation { justify-content: flex-start; } .hotel-form, .annual-date-range { grid-template-columns: 1fr; } }
+@media (max-width: 48rem) { .app-shell { display: block; } .sidebar { padding: 1rem; } .sidebar .brand { margin-bottom: 1rem; } .sidebar nav { display: flex; overflow-x: auto; } .sidebar a { white-space: nowrap; } .topbar, main:not(.login-page) { padding-left: 1rem; padding-right: 1rem; } .filter-bar, .calendar-toolbar { align-items: stretch; flex-direction: column; } .calendar-navigation { justify-content: flex-start; } .hotel-form, .annual-date-range, .media-upload-form { grid-template-columns: 1fr; } }

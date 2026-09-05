@@ -5,6 +5,7 @@ import type { CreateHotelRequest, Hotel } from '../api/hotelApi';
 import { findBookingPolicy, saveBookingPolicy } from '../api/bookingPolicyApi';
 import type { BookingPolicy } from '../api/bookingPolicyApi';
 import { useAuth } from '../auth/useAuth';
+import { WebsiteMediaManager } from '../components/WebsiteMediaManager';
 
 export function HotelSettingsPage({ hotelId }: { hotelId: string }) {
   const { session } = useAuth();
@@ -125,6 +126,13 @@ export function HotelSettingsPage({ hotelId }: { hotelId: string }) {
 
           <div className="form-actions full-width"><button type="submit">Save hotel details</button></div>
         </form>
+      </section>
+
+      <section className="setup-card room-type-form-card">
+        <h2>Public website photos</h2>
+        <p>Customize the main visual and the hotel gallery without rebuilding the frontend.</p>
+        <WebsiteMediaManager hotelId={hotelId} usage="HERO" title="Homepage hero" description="The large image at the top of the public homepage." />
+        <WebsiteMediaManager hotelId={hotelId} usage="HOTEL_GALLERY" title="Hotel gallery" description="Exterior, common areas, breakfast and destination photos." />
       </section>
 
       <section className="setup-card room-type-form-card">

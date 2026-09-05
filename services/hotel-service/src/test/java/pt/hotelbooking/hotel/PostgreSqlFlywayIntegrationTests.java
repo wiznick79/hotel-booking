@@ -52,6 +52,7 @@ class PostgreSqlFlywayIntegrationTests {
         assertThat(tableExists("pricing_rules")).isTrue();
         assertThat(tableExists("pricing_rule_room_type_prices")).isTrue();
         assertThat(tableExists("room_unavailabilities")).isTrue();
+        assertThat(tableExists("website_media")).isTrue();
     }
 
     private boolean tableExists(String tableName) {

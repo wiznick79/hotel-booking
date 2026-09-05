@@ -143,7 +143,10 @@ services:
       HOTEL_DB_USERNAME: hotel_booking
       HOTEL_DB_PASSWORD: ${POSTGRES_PASSWORD:-hotel_booking_dev_password}
       REDIS_HOST: redis
+      WEBSITE_MEDIA_STORAGE_PATH: /data/website-media
       USE_SWAGGER: ${USE_SWAGGER:-false}
+    volumes:
+      - hotel-booking-website-media:/data/website-media
     ports:
       - "${HB_HOTEL_SERVICE_PORT:-18081}:8081"
     depends_on:
@@ -247,3 +250,4 @@ volumes:
   hotel-booking-redis-data:
   hotel-booking-prometheus-data:
   hotel-booking-grafana-data:
+  hotel-booking-website-media:
