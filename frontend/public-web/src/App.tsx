@@ -40,6 +40,7 @@ type Reservation = {
   paymentMethod: string;
   manualConfirmationRequired: boolean;
   paymentAttempt: PaymentAttempt | null;
+  paymentStatus: string | null;
   paymentInstructions: PaymentInstructions | null;
 };
 
@@ -981,13 +982,16 @@ function GuestBooking({ hotel, roomTypes, token, onReturnHome, language }: Guest
         </div>
         <div>
           <dt>Payment</dt>
-          <dd>{formatPaymentMode(reservation.paymentMode)}</dd>
+          <dd>{reservation.paymentStatus === 'SUCCEEDED' || reservation.paymentAttempt?.status === 'SUCCEEDED'
+            ? `Paid · ${formatPaymentMethod(reservation.paymentMethod)}`
+            : formatPaymentMode(reservation.paymentMode)}</dd>
         </div>
       </dl>
       {reservation.manualConfirmationRequired && (
         <p>Your booking request requires confirmation from the hotel.</p>
       )}
-      {reservation.paymentMode === 'PAY_NOW' && reservation.paymentAttempt?.status !== 'SUCCEEDED'
+      {reservation.paymentMode === 'PAY_NOW' && reservation.status === 'HELD'
+        && reservation.paymentStatus !== 'SUCCEEDED' && reservation.paymentAttempt?.status !== 'SUCCEEDED'
         && !reservation.paymentInstructions && (
           <section className="payment-instructions">
             <p className="eyebrow">Payment required</p>
@@ -1002,7 +1006,8 @@ function GuestBooking({ hotel, roomTypes, token, onReturnHome, language }: Guest
       {reservation.paymentInstructions && (
         <section className="payment-instructions">
           <p className="eyebrow">Multibanco payment details</p>
-          <h2>Complete your payment</h2>
+          <h2>{reservation.status === 'HELD' && reservation.paymentStatus !== 'SUCCEEDED'
+            && reservation.paymentAttempt?.status !== 'SUCCEEDED' ? 'Complete your payment' : 'Payment details'}</h2>
           <dl className="booking-summary">
             <div>
               <dt>Entity</dt>
@@ -1019,7 +1024,8 @@ function GuestBooking({ hotel, roomTypes, token, onReturnHome, language }: Guest
               </div>
             )}
           </dl>
-          {reservation.paymentInstructions.hostedVoucherUrl && (
+          {reservation.status === 'HELD' && reservation.paymentStatus !== 'SUCCEEDED'
+            && reservation.paymentAttempt?.status !== 'SUCCEEDED' && reservation.paymentInstructions.hostedVoucherUrl && (
             <a
               className="button-link"
               href={reservation.paymentInstructions.hostedVoucherUrl}

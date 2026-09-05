@@ -17,6 +17,7 @@ export type Reservation = {
   paymentMode: string;
   paymentMethod: string;
   paymentStatus: PaymentStatus | null;
+  paymentReviewRequired: boolean;
   manualConfirmationRequired: boolean;
   holdUntil: string | null;
   discountCode: string | null;

@@ -567,7 +567,7 @@ function formatPayment(reservation: Reservation) {
   const method = formatPaymentMethod(reservation.paymentMethod);
   const status = paymentStatusLabel(reservation.paymentStatus);
 
-  return `${status} · ${method}`;
+  return `${status} · ${method}${reservation.paymentReviewRequired ? ' · Review required (cancelled booking)' : ''}`;
 }
 
 function paymentStatusLabel(paymentStatus: string | null) {

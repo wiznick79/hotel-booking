@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +40,100 @@ class PaymentServiceTests {
 
     @Mock
     private PaymentProvider stripePaymentProvider;
+
+    @Test
+    void recordsLatePaymentWithoutRevivingExpiredReservation() {
+        Reservation reservation = reservation();
+        reservation.placeHold(Instant.now().minusSeconds(60));
+        reservation.expireHold();
+        PaymentAttempt attempt = attempt(reservation);
+        attempt.markExpired();
+
+        deliverSuccess(attempt);
+        deliverSuccess(attempt);
+
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.SUCCEEDED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(pt.hotelbooking.booking.model.dto.ReservationResponse.from(reservation, attempt)
+                .paymentReviewRequired()).isTrue();
+    }
+
+    @Test
+    void checksHoldDeadlineEvenBeforeExpirationJobRuns() {
+        Reservation reservation = reservation();
+        reservation.placeHold(Instant.now().minusSeconds(60));
+        PaymentAttempt attempt = attempt(reservation);
+
+        deliverSuccess(attempt);
+
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.SUCCEEDED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelledBookingKeepsPaymentForStaffReview() {
+        Reservation reservation = reservation();
+        reservation.cancel();
+        PaymentAttempt attempt = attempt(reservation);
+        deliverSuccess(attempt);
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.SUCCEEDED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+    }
+
+    @Test
+    void paymentAfterManualConfirmationDoesNotTryToConfirmAgain() {
+        Reservation reservation = reservation();
+        reservation.confirm();
+        PaymentAttempt attempt = attempt(reservation);
+        deliverSuccess(attempt);
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.SUCCEEDED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        assertThat(pt.hotelbooking.booking.model.dto.ReservationResponse.from(reservation, attempt)
+                .paymentReviewRequired()).isFalse();
+    }
+
+    @Test
+    void successSupersedesFailureAndLaterFailureCannotUndoSuccess() {
+        PaymentAttempt attempt = attempt(reservation());
+        attempt.markFailed("Earlier failure");
+        deliverSuccess(attempt);
+        attempt.markFailed("Delayed failure notification");
+        attempt.markExpired();
+        assertThat(attempt.getStatus()).isEqualTo(PaymentAttemptStatus.SUCCEEDED);
+        assertThat(attempt.getFailureReason()).isNull();
+    }
+
+    @Test
+    void simulatorUsesTheSameLatePaymentRules() {
+        Reservation reservation = reservation();
+        reservation.cancel();
+        PaymentAttempt attempt = attempt(reservation);
+        when(paymentAttemptRepository.findByProviderAndProviderPaymentId(
+                PaymentProviderType.LOCAL_SIMULATION, "cs_test"))
+                .thenReturn(Optional.of(attempt));
+        var result = new PaymentService(paymentAttemptRepository, paymentProviderRegistry,
+                paymentAttemptInitializationService).completeLocalSimulation("cs_test");
+        assertThat(result.paymentReviewRequired()).isTrue();
+        assertThat(result.status()).isEqualTo(ReservationStatus.CANCELLED);
+    }
+
+    private PaymentAttempt attempt(Reservation reservation) {
+        return new PaymentAttempt(reservation, PaymentProviderType.STRIPE,
+                PaymentMethod.MULTIBANCO, "cs_test", null, null);
+    }
+
+    private void deliverSuccess(PaymentAttempt attempt) {
+        when(paymentProviderRegistry.providerFor(PaymentProviderType.STRIPE))
+                .thenReturn(stripePaymentProvider);
+        when(stripePaymentProvider.verifyWebhook(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new PaymentWebhookResult("cs_test", null, null,
+                        PaymentWebhookResult.PaymentOutcome.SUCCEEDED, null));
+        when(paymentAttemptRepository.findByProviderAndProviderPaymentId(
+                PaymentProviderType.STRIPE, "cs_test")).thenReturn(Optional.of(attempt));
+        new PaymentService(paymentAttemptRepository, paymentProviderRegistry,
+                paymentAttemptInitializationService).processWebhook(PaymentProviderType.STRIPE,
+                new PaymentWebhook("signature", "payload", Map.of()));
+    }
 
     @Test
     void correlatesEarlyWebhookUsingProviderMetadataPaymentAttemptId() {

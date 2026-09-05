@@ -632,6 +632,12 @@ public class ReservationService {
     }
 
     private ReservationResponse toResponse(Reservation reservation) {
+        // A newer abandoned retry must not hide money received on an older attempt.
+        var successfulAttempts = paymentAttemptRepository.findByReservationAndStatus(
+                reservation, pt.hotelbooking.booking.model.entity.PaymentAttemptStatus.SUCCEEDED);
+        if (!successfulAttempts.isEmpty()) {
+            return ReservationResponse.from(reservation, successfulAttempts.getFirst());
+        }
         return paymentAttemptRepository.findFirstByReservationOrderByCreatedAtDesc(reservation)
                 .map(paymentAttempt -> ReservationResponse.from(reservation, paymentAttempt))
                 .orElseGet(() -> ReservationResponse.from(reservation));

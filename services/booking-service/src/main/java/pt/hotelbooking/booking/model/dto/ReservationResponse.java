@@ -20,6 +20,12 @@ public record ReservationResponse(UUID id, String hotelId, String guestName, Str
                                   Instant holdUntil, String discountCode, BigDecimal discountAmount,
                                   PaymentAttemptResponse paymentAttempt, PaymentAttemptStatus paymentStatus,
                                   PaymentInstructionsResponse paymentInstructions) {
+    @com.fasterxml.jackson.annotation.JsonProperty("paymentReviewRequired")
+    public boolean paymentReviewRequired() {
+        return paymentStatus == PaymentAttemptStatus.SUCCEEDED
+                && status == ReservationStatus.CANCELLED;
+    }
+
     public ReservationResponse(UUID id, String hotelId, String guestName, String guestPhone,
                                String guestEmail, int guestCount, LocalDate checkInDate,
                                LocalDate checkOutDate, String notes, ReservationStatus status,
