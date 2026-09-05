@@ -9,6 +9,8 @@ import pt.hotelbooking.booking.model.dto.ReservationResponse;
 import pt.hotelbooking.booking.model.entity.PaymentAttempt;
 import pt.hotelbooking.booking.model.entity.PaymentAttemptStatus;
 import pt.hotelbooking.booking.model.entity.Reservation;
+import pt.hotelbooking.booking.model.entity.ReservationStatus;
+import java.time.Instant;
 import pt.hotelbooking.booking.payment.PaymentInitiation;
 import pt.hotelbooking.booking.payment.PaymentInitiationRequest;
 import pt.hotelbooking.booking.payment.PaymentProvider;
@@ -48,9 +50,7 @@ public class PaymentService {
                 .findByProviderAndProviderPaymentId(PaymentProviderType.LOCAL_SIMULATION, providerPaymentId)
                 .orElseThrow(() -> new ReservationNotFoundException("Payment attempt not found."));
 
-        if (attempt.markSucceeded()) {
-            attempt.getReservation().confirm();
-        }
+        recordSuccessfulPayment(attempt);
 
         return ReservationResponse.from(attempt.getReservation(), attempt.getStatus());
     }
@@ -72,11 +72,7 @@ public class PaymentService {
         }
 
         switch (result.outcome()) {
-            case SUCCEEDED -> {
-                if (attempt.markSucceeded()) {
-                    attempt.getReservation().confirm();
-                }
-            }
+            case SUCCEEDED -> recordSuccessfulPayment(attempt);
             case FAILED, CANCELLED -> attempt.markFailed("The payment provider reported a failed payment.");
             case PENDING -> {
                 // A delayed payment method can remain pending after a webhook is received.
@@ -87,6 +83,24 @@ public class PaymentService {
     public void expirePendingAttempts(Reservation reservation) {
         paymentAttemptRepository.findByReservationAndStatus(reservation, PaymentAttemptStatus.PENDING)
                 .forEach(PaymentAttempt::markExpired);
+    }
+
+    private void recordSuccessfulPayment(PaymentAttempt attempt) {
+        if (!attempt.markSucceeded()) {
+            return;
+        }
+
+        Reservation reservation = attempt.getReservation();
+        // Provider success records money received even after our local deadline.
+        // Never resurrect a cancelled booking: its inventory may already be sold.
+        if (reservation.getStatus() == ReservationStatus.HELD
+                && reservation.getHoldUntil() != null
+                && !reservation.getHoldUntil().isAfter(Instant.now())) {
+            reservation.expireHold();
+        } else if (reservation.getStatus() == ReservationStatus.PENDING
+                || reservation.getStatus() == ReservationStatus.HELD) {
+            reservation.confirm();
+        }
     }
 
     private PaymentAttempt findPaymentAttempt(

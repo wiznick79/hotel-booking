@@ -54,6 +54,32 @@ class ReservationServiceTests {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private pt.hotelbooking.booking.repository.PaymentAttemptRepository paymentAttemptRepository;
+
+    @Test
+    void successfulAttemptIsNotHiddenByANewerUnpaidRetry() {
+        UUID id = UUID.randomUUID();
+        var reservation = new pt.hotelbooking.booking.model.entity.Reservation(
+                "hotel-1", "Guest", "+351911111111", "guest@example.test", 1,
+                LocalDate.now().plusDays(1), LocalDate.now().plusDays(2), null);
+        reservation.cancel();
+        var paid = new pt.hotelbooking.booking.model.entity.PaymentAttempt(reservation,
+                pt.hotelbooking.booking.payment.PaymentProviderType.STRIPE,
+                pt.hotelbooking.booking.model.entity.PaymentMethod.CARD, "older-paid", null, null);
+        paid.markSucceeded();
+        when(reservationRepository.findById(id)).thenReturn(Optional.of(reservation));
+        when(paymentAttemptRepository.findByReservationAndStatus(reservation,
+                pt.hotelbooking.booking.model.entity.PaymentAttemptStatus.SUCCEEDED))
+                .thenReturn(List.of(paid));
+        var result = reservationService.findById(id);
+        assertThat(result.paymentStatus()).isEqualTo(
+                pt.hotelbooking.booking.model.entity.PaymentAttemptStatus.SUCCEEDED);
+        assertThat(result.paymentReviewRequired()).isTrue();
+        org.mockito.Mockito.verify(paymentAttemptRepository, org.mockito.Mockito.never())
+                .findFirstByReservationOrderByCreatedAtDesc(reservation);
+    }
+
     @InjectMocks
     private ReservationService reservationService;
 

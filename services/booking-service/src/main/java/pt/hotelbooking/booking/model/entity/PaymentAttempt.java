@@ -71,8 +71,8 @@ public class PaymentAttempt extends BookingBaseEntity {
             return false;
         }
 
-        if (status != PaymentAttemptStatus.PENDING) {
-            throw new IllegalStateException("This payment attempt can no longer succeed.");
+        if (status == PaymentAttemptStatus.REFUNDED) {
+            return false;
         }
 
         status = PaymentAttemptStatus.SUCCEEDED;
