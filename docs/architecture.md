@@ -180,7 +180,7 @@ The service ports are also exposed locally for diagnostics: hotel `18081`, booki
 ## Intentional current limitations and next evolution
 
 - The frontend containers need their first staging deployment and a DNS record for `admin.hotel.wiznick.net`.
-- Public hotel resolution must move from “first hotel” to a configured hostname or explicit hotel selection.
+- Public hotel resolution uses an explicit deployment hotel ID, with automatic selection only for single-hotel installations. Hostname-to-hotel routing remains a future option.
 - Internal synchronous calls currently use configured service URLs and are protected with bounded timeouts,
   transient retries, and circuit breakers. Service discovery and/or a service mesh are not needed for the current
   single-host Compose deployment, but are valid future learning steps.
