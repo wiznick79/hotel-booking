@@ -27,6 +27,16 @@ export type PublicRoomType = {
   active: boolean;
 };
 
+export type PublicWebsiteMedia = {
+  id: string;
+  hotelId: string;
+  roomTypeId: string | null;
+  usage: 'HERO' | 'HOTEL_GALLERY' | 'ROOM_TYPE_GALLERY';
+  sortOrder: number;
+  altText: string | null;
+  url: string;
+};
+
 type PageProps = {
   hotel: PublicHotel | null;
   language: PublicLanguage;
@@ -37,6 +47,7 @@ type RoomDetailPageProps = PageProps & {
   roomTypes: PublicRoomType[];
   onBook: (roomTypeId: string) => void;
   onOpenRoom: (roomTypeId: string) => void;
+  media: PublicWebsiteMedia[];
 };
 
 export function RoomDetailPage({
@@ -46,10 +57,12 @@ export function RoomDetailPage({
   roomTypes,
   onBook,
   onOpenRoom,
+  media,
 }: RoomDetailPageProps) {
   const t = translator(language);
   const roomIndex = Math.max(0, roomTypes.findIndex((candidate) => candidate.id === roomType?.id));
-  const image = roomImageFor(roomIndex);
+  const roomMedia = media.filter(item => item.usage === 'ROOM_TYPE_GALLERY' && item.roomTypeId === roomType?.id);
+  const image = roomMedia[0]?.url ?? roomImageFor(roomIndex);
 
   if (!roomType) {
     return (
@@ -95,8 +108,10 @@ export function RoomDetailPage({
       </section>
 
       <section className="section room-gallery-band">
-        <img alt="Hotel room detail" src={roomImage} />
-        <img alt="Hotel suite detail" src={suiteImage} />
+        {(roomMedia.length ? roomMedia : [
+          { id: 'fallback-room', url: roomImage, altText: 'Hotel room detail' },
+          { id: 'fallback-suite', url: suiteImage, altText: 'Hotel suite detail' },
+        ]).map(item => <img key={item.id} alt={item.altText ?? roomType.name} src={item.url} />)}
       </section>
 
       {alternatives.length > 0 && (
@@ -105,7 +120,7 @@ export function RoomDetailPage({
           <div className="room-cards room-cards-visual">
             {alternatives.map((candidate, index) => (
               <article className="room-card" key={candidate.id}>
-                <img alt={candidate.name} src={roomImageFor(index + 1)} />
+                <img alt={candidate.name} src={media.find(item => item.usage === 'ROOM_TYPE_GALLERY' && item.roomTypeId === candidate.id)?.url ?? roomImageFor(index + 1)} />
                 <div>
                   <span>{t('from')} €{candidate.basePrice.toFixed(0)} {t('perNight')}</span>
                   <h3>{candidate.name}</h3>
@@ -122,8 +137,9 @@ export function RoomDetailPage({
   );
 }
 
-export function GalleryPage({ language }: PageProps) {
+export function GalleryPage({ language, media = [] }: PageProps & { media?: PublicWebsiteMedia[] }) {
   const t = translator(language);
+  const gallery = media.filter(item => item.usage === 'HOTEL_GALLERY');
 
   return (
     <div className="marketing-page">
@@ -133,6 +149,11 @@ export function GalleryPage({ language }: PageProps) {
         <p>{t('photoGalleryBody')}</p>
       </section>
       <section className="editorial-gallery" aria-label={t('gallery')}>
+        {gallery.length > 0 ? gallery.map((item, index) => (
+          <figure className={index % 4 === 0 ? 'gallery-wide' : undefined} key={item.id}>
+            <img alt={item.altText ?? ''} src={item.url} />
+          </figure>
+        )) : <>
         <figure className="gallery-wide">
           <img alt="Hotel exterior" src={exteriorImage} />
         </figure>
@@ -142,6 +163,7 @@ export function GalleryPage({ language }: PageProps) {
         <figure className="gallery-wide">
           <img alt="Miranda do Douro landscape" src={landscapeImage} />
         </figure>
+        </>}
       </section>
     </div>
   );

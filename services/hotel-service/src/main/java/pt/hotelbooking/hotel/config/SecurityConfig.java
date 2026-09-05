@@ -35,6 +35,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/hotels",
                                 "/api/hotels/*",
+                                "/api/media",
+                                "/api/media/*/content",
                                 "/api/rooms",
                                 "/api/rooms/*",
                                 "/api/rooms/bookable",

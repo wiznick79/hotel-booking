@@ -34,7 +34,7 @@ export const test = base.extend<{ isolatedApi: void }>({
         return;
       }
       const responses: Record<string, unknown> = {
-        '/api/hotels': [hotel], '/api/room-types': [room],
+        '/api/hotels': [hotel], '/api/room-types': [room], '/api/media': [],
         '/api/reservations/availability': [{ roomTypeId: room.id, name: room.name,
           maximumOccupancy: 2, totalPrice: 160, currency: 'EUR' }],
         '/api/payment-methods': [{ paymentMethod: 'PAY_AT_RECEPTION', paymentMode: 'PAY_AT_RECEPTION' }],

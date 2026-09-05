@@ -14,6 +14,10 @@ spring:
     enabled: false
   cache:
     type: simple
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 9MB
 
   h2:
     console:
@@ -22,6 +26,9 @@ spring:
 hotel:
   i18n:
     default-language: en
+
+website-media:
+  storage-path: ${WEBSITE_MEDIA_STORAGE_PATH:./data/website-media}
 
 jwt:
   public-key-base64: ${JWT_PUBLIC_KEY_BASE64}

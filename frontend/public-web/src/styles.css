@@ -203,6 +203,13 @@ article,
   transform: translateY(-5px);
 }
 
+.landing-room-card > img {
+  height: 180px;
+  margin: -1.5rem -1.5rem 1.25rem;
+  object-fit: cover;
+  width: calc(100% + 3rem);
+}
+
 .room-card > span {
   color: #a88751;
   font-size: 0.8rem;

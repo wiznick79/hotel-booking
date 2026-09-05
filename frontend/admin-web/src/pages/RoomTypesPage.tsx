@@ -5,6 +5,7 @@ import { createRoomType, deactivateRoomType, findRoomTypes, updateRoomType } fro
 import { ApiError } from '../api/httpClient';
 import { useAuth } from '../auth/useAuth';
 import { StatusBadge } from '../components/StatusBadge';
+import { WebsiteMediaManager } from '../components/WebsiteMediaManager';
 
 const languages = [
   { code: 'en', label: 'English' },
@@ -27,6 +28,7 @@ export function RoomTypesPage({ hotelId }: { hotelId: string }) {
   const [translations, setTranslations] = useState(emptyTranslations);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoRoomType, setPhotoRoomType] = useState<RoomType | null>(null);
 
   const loadRoomTypes = useCallback(async () => {
     if (!hotelId || !session) {
@@ -141,10 +143,15 @@ export function RoomTypesPage({ hotelId }: { hotelId: string }) {
         <div className="table-container">
           <table>
             <thead><tr><th>Name</th><th>Language</th><th>Maximum guests</th><th>Base price</th><th>Status</th><th /></tr></thead>
-            <tbody>{roomTypes.map((roomType) => <tr key={roomType.id}><td><strong>{roomType.name}</strong><span className="table-subtext">{roomType.description}</span></td><td>{roomType.language.toUpperCase()}</td><td>{roomType.maximumOccupancy}</td><td>{formatPrice(roomType.basePrice)}</td><td><StatusBadge label={roomType.active ? 'Active' : 'Inactive'} tone={roomType.active ? 'positive' : 'negative'} /></td><td><button type="button" className="secondary-button" onClick={() => { setEditingRoomTypeId(roomType.id); setMaximumOccupancy(roomType.maximumOccupancy); setBasePrice(String(roomType.basePrice)); setTranslations({ ...emptyTranslations(), [roomType.language]: { name: roomType.name, description: roomType.description ?? '' } }); setIsFormOpen(true); }}>Edit</button> <button type="button" className="secondary-button" onClick={() => void deleteRoomType(roomType)}>Delete</button></td></tr>)}</tbody>
+            <tbody>{roomTypes.map((roomType) => <tr key={roomType.id}><td><strong>{roomType.name}</strong><span className="table-subtext">{roomType.description}</span></td><td>{roomType.language.toUpperCase()}</td><td>{roomType.maximumOccupancy}</td><td>{formatPrice(roomType.basePrice)}</td><td><StatusBadge label={roomType.active ? 'Active' : 'Inactive'} tone={roomType.active ? 'positive' : 'negative'} /></td><td><div className="table-actions"><button type="button" className="secondary-button" onClick={() => setPhotoRoomType(roomType)}>Photos</button><button type="button" className="secondary-button" onClick={() => { setEditingRoomTypeId(roomType.id); setMaximumOccupancy(roomType.maximumOccupancy); setBasePrice(String(roomType.basePrice)); setTranslations({ ...emptyTranslations(), [roomType.language]: { name: roomType.name, description: roomType.description ?? '' } }); setIsFormOpen(true); }}>Edit</button><button type="button" className="secondary-button" onClick={() => void deleteRoomType(roomType)}>Delete</button></div></td></tr>)}</tbody>
           </table>
         </div>
       )}
+
+      {photoRoomType && <section className="setup-card room-type-form-card">
+        <div className="media-heading"><div><p className="eyebrow">Public website</p><h2>{photoRoomType.name} photos</h2></div><button className="secondary-button" type="button" onClick={() => setPhotoRoomType(null)}>Close</button></div>
+        <WebsiteMediaManager hotelId={hotelId} roomTypeId={photoRoomType.id} usage="ROOM_TYPE_GALLERY" title="Room gallery" description="The first photo is used as the room cover; all photos appear on its detail page." />
+      </section>}
 
       {isFormOpen && (
         <section className="setup-card room-type-form-card" aria-labelledby="new-room-type-title">

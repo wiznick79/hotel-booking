@@ -133,3 +133,20 @@ test('account survives refresh and profile edits update the greeting', async ({ 
   await page.getByRole('tab', { name: 'My reservations' }).click();
   await expect(page.getByRole('heading', { name: 'No reservations yet' })).toBeVisible();
 });
+
+test('room detail uses its managed gallery photo', async ({ page }) => {
+  await page.route('**/api/media?*', route => route.fulfill({ json: [{
+    id: 'managed-photo', hotelId: 'hotel-test', roomTypeId: room.id,
+    usage: 'ROOM_TYPE_GALLERY', sortOrder: 0, altText: 'Managed room photo',
+    url: '/api/media/managed-photo/content',
+  }] }));
+  await page.route('**/api/media/managed-photo/content', route => route.fulfill({
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCACAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+  }));
+
+  await page.goto(`/#/rooms/${room.id}`);
+  await expect(page.getByRole('img', { name: 'Double room' }).first()).toHaveAttribute(
+    'src', '/api/media/managed-photo/content');
+  await expect(page.getByRole('img', { name: 'Managed room photo' })).toBeVisible();
+});

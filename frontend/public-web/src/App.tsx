@@ -12,6 +12,7 @@ import {
   SiteFooter,
   type PublicHotel,
   type PublicRoomType,
+  type PublicWebsiteMedia,
 } from './MarketingPages';
 
 type Hotel = PublicHotel;
@@ -79,6 +80,7 @@ export function App() {
   const [language, setLanguage] = useState<PublicLanguage>(readLanguage);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [preferredRoomTypeId, setPreferredRoomTypeId] = useState('');
+  const [websiteMedia, setWebsiteMedia] = useState<PublicWebsiteMedia[]>([]);
   const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
     translate(language, key, values);
 
@@ -103,13 +105,17 @@ export function App() {
       const selectedHotel = selectPublicHotel(hotels, import.meta.env.VITE_PUBLIC_HOTEL_ID);
 
       if (!selectedHotel) throw new Error('Public hotel is not uniquely configured.');
+      const media = await get<PublicWebsiteMedia[]>(`/media?hotelId=${encodeURIComponent(selectedHotel.id)}`, selectedLanguage)
+        .catch(() => []);
 
       setHotel(selectedHotel);
       setTypes(roomTypes.filter((type) => type.hotelId === selectedHotel?.id && type.active));
+      setWebsiteMedia(media.map(item => ({ ...item, url: publicMediaUrl(item.url) })));
       setLoadError('');
     } catch {
       setHotel(null);
       setTypes([]);
+      setWebsiteMedia([]);
       setLoadError('The hotel information could not be loaded. Please try again shortly.');
     }
   }
@@ -231,9 +237,10 @@ export function App() {
             onOpenRoom={(roomTypeId) => navigateToPage(`/rooms/${roomTypeId}`)}
             roomType={types.find((type) => type.id === path.split('/')[2]) ?? null}
             roomTypes={types}
+            media={websiteMedia}
           />
         ) : path === '/gallery' ? (
-          <GalleryPage hotel={hotel} language={language} />
+          <GalleryPage hotel={hotel} language={language} media={websiteMedia} />
         ) : path === '/experience' ? (
           <ExperiencePage hotel={hotel} language={language} />
         ) : path === '/contact' ? (
@@ -245,6 +252,7 @@ export function App() {
             onBook={() => openBooking()}
             onOpenRoom={(roomTypeId) => navigateToPage(`/rooms/${roomTypeId}`)}
             language={language}
+            media={websiteMedia}
           />
         )}
       </main>
@@ -264,9 +272,10 @@ type LandingProps = {
   onBook: () => void;
   onOpenRoom: (roomTypeId: string) => void;
   language: PublicLanguage;
+  media: PublicWebsiteMedia[];
 };
 
-function Landing({ hotel, types, onBook, onOpenRoom, language }: LandingProps) {
+function Landing({ hotel, types, onBook, onOpenRoom, language, media }: LandingProps) {
   const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) =>
     translate(language, key, values);
 
@@ -275,7 +284,7 @@ function Landing({ hotel, types, onBook, onOpenRoom, language }: LandingProps) {
       <section
         className="hero-photo"
         style={{
-          backgroundImage: `linear-gradient(90deg, #15251eaa, #15251e11), url(${heroImage})`,
+          backgroundImage: `linear-gradient(90deg, #15251eaa, #15251e11), url(${media.find(item => item.usage === 'HERO')?.url ?? heroImage})`,
         }}
       >
         <div>
@@ -296,7 +305,7 @@ function Landing({ hotel, types, onBook, onOpenRoom, language }: LandingProps) {
           <p>{t('ourHomeBody')}</p>
           <button onClick={onBook} type="button">{t('exploreRooms')}</button>
         </div>
-        <img alt="Traditional Portuguese hotel exterior surrounded by greenery" src={exteriorImage} />
+        <img alt={media.find(item => item.usage === 'HOTEL_GALLERY')?.altText ?? 'Traditional Portuguese hotel exterior surrounded by greenery'} src={media.find(item => item.usage === 'HOTEL_GALLERY')?.url ?? exteriorImage} />
       </section>
 
       <section className="section room-section" id="rooms">
@@ -309,7 +318,8 @@ function Landing({ hotel, types, onBook, onOpenRoom, language }: LandingProps) {
         </div>
         <div className="room-cards">
           {types.map((type) => (
-            <article className="room-card" key={type.id}>
+            <article className="room-card landing-room-card" key={type.id}>
+              {media.find(item => item.usage === 'ROOM_TYPE_GALLERY' && item.roomTypeId === type.id) && <img alt={type.name} src={media.find(item => item.usage === 'ROOM_TYPE_GALLERY' && item.roomTypeId === type.id)?.url} />}
               <span>{t('from')} €{type.basePrice.toFixed(0)} {t('perNight')}</span>
               <h3>{type.name}</h3>
               <p>{t('sleepsUpTo', { count: type.maximumOccupancy })}</p>
@@ -337,7 +347,7 @@ function Landing({ hotel, types, onBook, onOpenRoom, language }: LandingProps) {
       </section>
 
       <section className="section editorial-section">
-        <img alt="Warm, comfortable hotel bedroom" src={roomImage} />
+        <img alt="Warm, comfortable hotel bedroom" src={media.find(item => item.usage === 'ROOM_TYPE_GALLERY')?.url ?? roomImage} />
         <div className="editorial-copy">
           <p className="eyebrow">{t('stayWithUs')}</p>
           <h2>{t('yourRoomAwaits')}</h2>
@@ -1524,6 +1534,10 @@ async function get<T>(path: string, language?: PublicLanguage): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+function publicMediaUrl(url: string) {
+  return url.startsWith('/api/') ? `${api}${url.slice(4)}` : url;
 }
 
 function formatCurrency(value: number, currency: string) {
