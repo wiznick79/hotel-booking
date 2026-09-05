@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { selectPublicHotel } from './hotelSelection';
 import heroImage from './assets/hotel-hero.png';
 import exteriorImage from './assets/hotel-exterior-gallery.png';
 import roomImage from './assets/hotel-room-gallery.png';
@@ -99,11 +100,16 @@ export function App() {
         get<Hotel[]>('/hotels', selectedLanguage),
         get<RoomType[]>('/room-types', selectedLanguage),
       ]);
-      const selectedHotel = hotels[0] ?? null;
+      const selectedHotel = selectPublicHotel(hotels, import.meta.env.VITE_PUBLIC_HOTEL_ID);
+
+      if (!selectedHotel) throw new Error('Public hotel is not uniquely configured.');
 
       setHotel(selectedHotel);
       setTypes(roomTypes.filter((type) => type.hotelId === selectedHotel?.id && type.active));
+      setLoadError('');
     } catch {
+      setHotel(null);
+      setTypes([]);
       setLoadError('The hotel information could not be loaded. Please try again shortly.');
     }
   }

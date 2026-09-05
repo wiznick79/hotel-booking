@@ -18,6 +18,7 @@ export default defineConfig({
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
+    env: { VITE_PUBLIC_HOTEL_ID: '' },
     command: 'npm run dev -- --host 127.0.0.1 --port 14327 --strictPort',
     url: 'http://127.0.0.1:14327',
     reuseExistingServer: false,

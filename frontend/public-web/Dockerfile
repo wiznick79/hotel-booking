@@ -8,6 +8,9 @@ RUN npm ci
 
 COPY frontend/public-web/ ./
 
+ARG VITE_PUBLIC_HOTEL_ID=""
+ENV VITE_PUBLIC_HOTEL_ID=$VITE_PUBLIC_HOTEL_ID
+
 RUN npm run build
 
 FROM nginx:1.27-alpine

@@ -72,6 +72,8 @@ services:
     build:
       context: .
       dockerfile: frontend/public-web/Dockerfile
+      args:
+        VITE_PUBLIC_HOTEL_ID: ${HB_PUBLIC_HOTEL_ID:-}
     ports:
       - "${HB_PUBLIC_WEB_PORT:-13002}:80"
     depends_on:
