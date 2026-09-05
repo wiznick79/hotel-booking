@@ -35,6 +35,11 @@ try {
     delete service.ports;
     delete service.volumes;
     service.networks = { default: null };
+    // Production delivery polls every 60s; keep this isolated smoke test
+    // independent of where startup falls within that scheduler cycle.
+    if (name === 'notification-service') {
+      service.environment.NOTIFICATION_RETRY_DELAY_MS = '1000';
+    }
     if (['public-web', 'api-gateway', 'mailpit'].includes(name)) {
       const target = name === 'public-web' ? 80 : name === 'mailpit' ? 8025 : 8080;
       service.ports = [{ target, host_ip: '127.0.0.1' }];

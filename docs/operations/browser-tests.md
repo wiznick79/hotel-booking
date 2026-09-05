@@ -51,6 +51,9 @@ It uses a random `hb-e2e-*` project name, random loopback host ports, an in-memo
 PostgreSQL data directory and fresh test signing keys. It never loads the local
 `.env`, and no application data volumes or fixed container names are reused.
 Stripe is disabled; email goes to the test stack's Mailpit.
+Only in this disposable stack, notification delivery polls every second instead
+of the application's 60-second interval, keeping the email assertion independent
+of startup timing.
 
 The test seeds one hotel and room via authenticated APIs, books through the real
 public website, checks the stored reservation via the API, then waits for email
