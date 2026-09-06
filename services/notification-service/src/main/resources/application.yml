@@ -85,6 +85,22 @@ resilience4j:
         event-consumer-buffer-size: 20
         record-exceptions:
           - pt.hotelbooking.notification.integration.HotelServiceUnavailableException
+      smtp:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        event-consumer-buffer-size: 20
+        record-exceptions:
+          - pt.hotelbooking.notification.service.EmailDeliveryUnavailableException
+  bulkhead:
+    instances:
+      smtp:
+        max-concurrent-calls: ${SMTP_MAX_CONCURRENT_CALLS:5}
+        max-wait-duration: 0
   retry:
     instances:
       hotelService:

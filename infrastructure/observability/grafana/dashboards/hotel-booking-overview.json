@@ -58,6 +58,18 @@
       "title": "Retried calls",
       "type": "timeseries",
       "targets": [{"expr": "sum by (application, name, kind) (rate(resilience4j_retry_calls_total{kind=~\"successful_with_retry|failed_with_retry\"}[1m]))", "legendFormat": "{{application}} · {{name}} · {{kind}}"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+      "id": 7,
+      "title": "External provider bulkhead capacity",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "resilience4j_bulkhead_available_concurrent_calls", "legendFormat": "{{application}} · {{name}} · available"},
+        {"expr": "resilience4j_bulkhead_max_allowed_concurrent_calls", "legendFormat": "{{application}} · {{name}} · maximum"}
+      ]
     }
   ],
   "schemaVersion": 41,

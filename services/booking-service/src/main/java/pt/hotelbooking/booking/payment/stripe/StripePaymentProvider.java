@@ -7,6 +7,7 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -37,12 +38,18 @@ public class StripePaymentProvider implements PaymentProvider {
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
     private final String publicFrontendBaseUrl;
+    private final StripeResilience stripeResilience;
+    private final int connectTimeoutMs;
+    private final int readTimeoutMs;
 
     public StripePaymentProvider(
             ObjectMapper objectMapper,
             @Value("${payment.stripe.secret-key}") String secretKey,
             @Value("${payment.stripe.webhook-secret}") String webhookSecret,
-            @Value("${payment.stripe.public-frontend-base-url}") String publicFrontendBaseUrl) {
+            @Value("${payment.stripe.public-frontend-base-url}") String publicFrontendBaseUrl,
+            @Value("${payment.stripe.connect-timeout-ms:2000}") int connectTimeoutMs,
+            @Value("${payment.stripe.read-timeout-ms:5000}") int readTimeoutMs,
+            StripeResilience stripeResilience) {
         if (secretKey.isBlank() || webhookSecret.isBlank()) {
             throw new IllegalStateException("Stripe requires a secret key and webhook signing secret.");
         }
@@ -51,6 +58,9 @@ public class StripePaymentProvider implements PaymentProvider {
         this.objectMapper = objectMapper;
         this.webhookSecret = webhookSecret;
         this.publicFrontendBaseUrl = publicFrontendBaseUrl.replaceAll("/$", "");
+        this.connectTimeoutMs = connectTimeoutMs;
+        this.readTimeoutMs = readTimeoutMs;
+        this.stripeResilience = stripeResilience;
     }
 
     @Override
@@ -68,6 +78,7 @@ public class StripePaymentProvider implements PaymentProvider {
         try {
             SessionCreateParams.Builder parameters = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setIntegrationIdentifier("hotel_booking_qmxnrvta")
                     .setSuccessUrl(publicFrontendBaseUrl + "/#/payment/stripe/success")
                     .setCancelUrl(publicFrontendBaseUrl + "/#/book")
                     .addPaymentMethodType(toStripePaymentMethod(request.paymentMethod()))
@@ -90,7 +101,19 @@ public class StripePaymentProvider implements PaymentProvider {
                 parameters.setCustomerEmail(request.guestEmail());
             }
 
-            Session session = stripeClient.v1().checkout().sessions().create(parameters.build());
+            RequestOptions requestOptions = RequestOptions.builder()
+                    .setIdempotencyKey("hotel-booking-checkout-" + request.paymentAttemptId())
+                    .setConnectTimeout(connectTimeoutMs)
+                    .setReadTimeout(readTimeoutMs)
+                    .setMaxNetworkRetries(0)
+                    .build();
+            Session session = stripeResilience.execute(() -> {
+                try {
+                    return stripeClient.v1().checkout().sessions().create(parameters.build(), requestOptions);
+                } catch (Exception exception) {
+                    throw new StripeServiceUnavailableException("Stripe checkout session creation failed.", exception);
+                }
+            });
 
             return new PaymentInitiation(
                     providerType(), session.getId(), session.getPaymentIntent(), session.getUrl(), session.getMetadata());

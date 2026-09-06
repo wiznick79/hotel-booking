@@ -115,6 +115,9 @@ Unavailable`.
 4. Delivery failures are retried with backoff; unprocessable Kafka messages go to a dead-letter topic for investigation/recovery.
 
 The transactional outbox avoids the classic failure mode where a reservation commits but its notification event is lost.
+SMTP calls have bounded network timeouts, an independent circuit breaker, and a semaphore bulkhead. A saturated or
+unhealthy SMTP provider therefore cannot consume every notification-processing thread; failed records remain available
+to the existing persisted retry process.
 
 ### Optional customer account registration
 
@@ -155,8 +158,8 @@ Both reservation and identity topics have dead-letter topics for unprocessable m
 - API gateway creates or forwards `X-Correlation-Id`; services log it and booking-service propagates it to synchronous hotel-service requests.
 - Prometheus scrapes the gateway and services every 15 seconds.
 - Grafana dashboards are provisioned from version-controlled definitions.
-- Resilience4j publishes circuit-breaker and retry metrics to Prometheus. Grafana shows circuit state, failed or
-  rejected calls, and calls that required retries.
+- Resilience4j publishes circuit-breaker, retry, and bulkhead metrics to Prometheus. Grafana shows circuit state,
+  failed or rejected calls, calls that required retries, and external-provider concurrency saturation.
 - Springdoc/OpenAPI provides Swagger UI only when `USE_SWAGGER=true`; it is disabled in staging.
 
 ## Local runtime stack
