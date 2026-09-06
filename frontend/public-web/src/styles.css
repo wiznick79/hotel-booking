@@ -1208,3 +1208,40 @@ textarea {
     padding: 3rem 2rem;
   }
 }
+.discount-field {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.discount-field label {
+  margin: 0;
+}
+
+.discount-field button {
+  min-height: 3rem;
+  white-space: nowrap;
+}
+
+.discount-summary {
+  align-items: center;
+  background: #f4f7ef;
+  border: 1px solid #cbd9bd;
+  display: grid;
+  gap: 0.35rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.9rem 1rem;
+}
+
+.discount-summary span:nth-child(2) {
+  color: #687279;
+  text-decoration: line-through;
+}
+
+@media (max-width: 560px) {
+  .discount-field {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+}

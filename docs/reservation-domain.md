@@ -22,7 +22,7 @@ Physical-room assignments remain necessary for the second hotel, where room acce
 
 The checkout date is exclusive. A reservation from July 10 through July 14 occupies the nights of July 10, 11, 12, and 13.
 
-Discount codes are a planned feature. Hotel managers will be able to configure codes with validity rules and discount values. A successfully applied discount must be stored in the reservation price snapshot so later changes to the code do not alter existing reservations.
+Hotel managers can configure percentage or fixed-value discount codes with inclusive validity dates and optional usage limits. Guests preview a code against the selected stay before booking, while reservation creation recalculates it authoritatively and stores the code and amount in the immutable price snapshot. Limited-use codes are locked while consumed so concurrent bookings cannot exceed their configured limit.
 
 ## Room unavailability and maintenance
 

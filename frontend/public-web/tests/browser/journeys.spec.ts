@@ -26,6 +26,34 @@ test('availability failure prevents booking', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Request booking', exact: true })).toBeDisabled();
 });
 
+test('guest previews and submits a discount code', async ({ page }) => {
+  let submitted: Record<string, unknown> | undefined;
+  await page.route('**/api/discount-codes/validate?*', async route => {
+    expect(new URL(route.request().url()).searchParams.get('code')).toBe('WELCOME10');
+    await route.fulfill({ json: {
+      code: 'WELCOME10', originalTotal: 160, discountAmount: 16, finalTotal: 144,
+    } });
+  });
+  await page.route('**/api/reservations', async route => {
+    submitted = route.request().postDataJSON();
+    await route.fulfill({ status: 201, json: { ...reservation, totalPrice: 144,
+      discountCode: 'WELCOME10', discountAmount: 16 } });
+  });
+
+  await page.goto('/#/book');
+  await page.getByLabel('Available room type').selectOption(room.id);
+  await page.getByLabel('Discount code').fill('welcome10');
+  await page.getByRole('button', { name: 'Apply code' }).click();
+  await expect(page.getByText('WELCOME10 applied')).toBeVisible();
+  await expect(page.getByText('Final total: €144.00')).toBeVisible();
+  await page.getByLabel('Full name').fill('Browser Guest');
+  await page.getByLabel('Phone', { exact: true }).fill('+351911111111');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Request booking', exact: true }).click();
+
+  expect(submitted).toMatchObject({ discountCode: 'WELCOME10' });
+});
+
 test('registration rejects mismatched passwords before sending, then asks for verification', async ({ page }) => {
   let requests = 0;
   await page.route('**/api/auth/register', async route => {

@@ -42,6 +42,10 @@ public class DiscountCodeService {
         DiscountCode discountCode = discountCodeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Discount code not found."));
 
+        if (request.maximumUses() != null && request.maximumUses() < discountCode.getUsedCount()) {
+            throw new IllegalArgumentException("Maximum uses cannot be lower than the number already used.");
+        }
+
         discountCode.update(
                 request.percentage(),
                 request.fixedAmount(),
@@ -58,6 +62,14 @@ public class DiscountCodeService {
                 .orElseThrow(() -> new IllegalArgumentException("Discount code not found."));
 
         discountCode.deactivate();
+    }
+
+    @Transactional
+    public void activate(UUID id) {
+        DiscountCode discountCode = discountCodeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Discount code not found."));
+
+        discountCode.activate();
     }
 
     @Transactional
@@ -80,8 +92,8 @@ public class DiscountCodeService {
     }
 
     private void validateRequest(DiscountCodeRequest request) {
-        if (!request.validUntil().isAfter(request.validFrom())) {
-            throw new IllegalArgumentException("Discount validity end must be after its start.");
+        if (request.validUntil().isBefore(request.validFrom())) {
+            throw new IllegalArgumentException("Discount validity end must not be before its start.");
         }
 
         if (request.percentage() != null
@@ -93,12 +105,27 @@ public class DiscountCodeService {
 
     @Transactional
     public DiscountResult apply(String hotelId, String code, BigDecimal total, LocalDate date) {
+        return calculate(hotelId, code, total, date, true);
+    }
+
+    @Transactional(readOnly = true)
+    public DiscountResult preview(String hotelId, String code, BigDecimal total, LocalDate date) {
+        return calculate(hotelId, code, total, date, false);
+    }
+
+    private DiscountResult calculate(
+            String hotelId, String code, BigDecimal total, LocalDate date, boolean registerUse) {
         if (code == null || code.isBlank()) {
             return new DiscountResult(null, BigDecimal.ZERO, total);
         }
 
-        DiscountCode discountCode = discountCodeRepository
-                .findByHotelIdAndCodeIgnoreCaseAndErasedFalse(hotelId, code)
+        if (total == null || total.signum() < 0) {
+            throw new IllegalArgumentException("Booking total must not be negative.");
+        }
+
+        DiscountCode discountCode = (registerUse
+                ? discountCodeRepository.findForUpdate(hotelId, code.trim())
+                : discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse(hotelId, code.trim()))
                 .orElseThrow(() -> new IllegalArgumentException("Discount code is invalid."));
 
         if (!discountCode.isValidOn(date)) {
@@ -110,7 +137,9 @@ public class DiscountCodeService {
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                 : discountCode.getFixedAmount().min(total);
 
-        discountCode.registerUse();
+        if (registerUse) {
+            discountCode.registerUse();
+        }
         return new DiscountResult(discountCode.getCode(), discount, total.subtract(discount));
     }
 

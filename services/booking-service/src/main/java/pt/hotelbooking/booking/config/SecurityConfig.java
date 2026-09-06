@@ -31,6 +31,7 @@ public class SecurityConfig {
                         "/api/reservations",
                         "/api/reservations/availability",
                         "/api/reservations/guest/**",
+                        "/api/discount-codes/validate",
                         "/api/payment-methods",
                         "/api/payments/local/**",
                         "/api/payments/stripe/webhook")

@@ -31,7 +31,7 @@ class DiscountCodeServiceTests {
         DiscountCode code = new DiscountCode(
                 "hotel-1", "SUMMER", BigDecimal.TEN, null,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1), null);
-        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse("hotel-1", "summer"))
+        when(discountCodeRepository.findForUpdate("hotel-1", "summer"))
                 .thenReturn(Optional.of(code));
 
         DiscountCodeService.DiscountResult result = service.apply(
@@ -46,13 +46,28 @@ class DiscountCodeServiceTests {
         DiscountCode code = new DiscountCode(
                 "hotel-1", "SUMMER", BigDecimal.TEN, null,
                 LocalDate.of(2025, 1, 1), LocalDate.of(2025, 2, 1), null);
-        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse("hotel-1", "SUMMER"))
+        when(discountCodeRepository.findForUpdate("hotel-1", "SUMMER"))
                 .thenReturn(Optional.of(code));
 
         assertThatThrownBy(() -> service.apply(
                 "hotel-1", "SUMMER", BigDecimal.valueOf(200), LocalDate.of(2026, 7, 1)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Discount code is expired or unavailable.");
+    }
+
+    @Test
+    void previewsDiscountWithoutConsumingAUse() {
+        DiscountCode code = new DiscountCode(
+                "hotel-1", "WELCOME", null, BigDecimal.valueOf(15),
+                LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1), 1);
+        when(discountCodeRepository.findByHotelIdAndCodeIgnoreCaseAndErasedFalse("hotel-1", "WELCOME"))
+                .thenReturn(Optional.of(code));
+
+        DiscountCodeService.DiscountResult result = service.preview(
+                "hotel-1", "WELCOME", BigDecimal.valueOf(100), LocalDate.of(2026, 7, 1));
+
+        assertThat(result.total()).isEqualByComparingTo("85");
+        assertThat(code.getUsedCount()).isZero();
     }
 
     @Test

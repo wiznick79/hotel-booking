@@ -27,6 +27,10 @@ export function deactivateDiscountCode(accessToken: string, id: string) {
   return patchWithoutBody(`/discount-codes/${id}/deactivate`, accessToken);
 }
 
+export function activateDiscountCode(accessToken: string, id: string) {
+  return patchWithoutBody(`/discount-codes/${id}/activate`, accessToken);
+}
+
 export function deleteDiscountCode(accessToken: string, id: string) {
   return del(`/discount-codes/${id}`, accessToken);
 }

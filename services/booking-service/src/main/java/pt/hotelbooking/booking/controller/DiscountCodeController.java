@@ -60,6 +60,13 @@ public class DiscountCodeController {
         discountCodeService.deactivate(id);
     }
 
+    @PatchMapping("/{id}/activate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void activate(@PathVariable UUID id, Authentication authentication) {
+        HotelScopeAuthorization.requireAccess(authentication, discountCodeService.findHotelId(id));
+        discountCodeService.activate(id);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id, Authentication authentication) {

@@ -27,6 +27,13 @@ type AvailableRoomType = {
   currency: string;
 };
 
+type DiscountPreview = {
+  code: string;
+  originalTotal: number;
+  discountAmount: number;
+  finalTotal: number;
+};
+
 type Reservation = {
   id: string;
   guestName: string;
@@ -44,6 +51,8 @@ type Reservation = {
   paymentAttempt: PaymentAttempt | null;
   paymentStatus: string | null;
   paymentInstructions: PaymentInstructions | null;
+  discountCode: string | null;
+  discountAmount: number | null;
 };
 
 type PaymentAttempt = {
@@ -420,6 +429,10 @@ function Booking({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountPreview, setDiscountPreview] = useState<DiscountPreview | null>(null);
+  const [discountMessage, setDiscountMessage] = useState('');
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -514,6 +527,40 @@ function Booking({
     [availableRoomTypes, roomTypeId],
   );
 
+  useEffect(() => {
+    setDiscountPreview(null);
+    setDiscountMessage('');
+  }, [checkInDate, checkOutDate, selectedRoomType?.roomTypeId, selectedRoomType?.totalPrice]);
+
+  async function applyDiscount() {
+    const normalizedCode = discountCode.trim().toUpperCase();
+    setDiscountMessage('');
+
+    if (!hotel || !selectedRoomType || !normalizedCode) {
+      setDiscountPreview(null);
+      setDiscountMessage(t('chooseRoomBeforeDiscount'));
+      return;
+    }
+
+    setValidatingDiscount(true);
+    try {
+      const parameters = new URLSearchParams({
+        hotelId: hotel.id,
+        code: normalizedCode,
+        total: String(selectedRoomType.totalPrice),
+        stayDate: checkInDate,
+      });
+      const preview = await get<DiscountPreview>(`/discount-codes/validate?${parameters}`, language);
+      setDiscountCode(preview.code);
+      setDiscountPreview(preview);
+    } catch {
+      setDiscountPreview(null);
+      setDiscountMessage(t('discountInvalid'));
+    } finally {
+      setValidatingDiscount(false);
+    }
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setMessage('');
@@ -550,6 +597,7 @@ function Booking({
           roomTypeIds: [selectedRoomType.roomTypeId],
           paymentMode: paymentMethod === 'PAY_AT_RECEPTION' ? 'PAY_AT_RECEPTION' : 'PAY_NOW',
           paymentMethod,
+          discountCode: discountPreview?.code,
           privacyNoticeAccepted: true,
         }),
       });
@@ -663,10 +711,39 @@ function Booking({
 
       {selectedRoomType && (
         <p className="availability-summary">
-          {selectedRoomType.name}: <strong>{formatCurrency(selectedRoomType.totalPrice, selectedRoomType.currency)}</strong> for the full stay.
+          {selectedRoomType.name}: <strong>{formatCurrency(discountPreview?.finalTotal ?? selectedRoomType.totalPrice, selectedRoomType.currency)}</strong> {t('forFullStay')}
         </p>
       )}
       {searchError && <p className="error">{searchError}</p>}
+
+      <div className="discount-field">
+        <label>
+          {t('discountCode')} <span className="optional">({t('optional')})</span>
+          <input
+            autoComplete="off"
+            maxLength={100}
+            onChange={(event) => {
+              setDiscountCode(event.target.value.toUpperCase());
+              setDiscountPreview(null);
+              setDiscountMessage('');
+            }}
+            placeholder="WELCOME10"
+            value={discountCode}
+          />
+        </label>
+        <button disabled={validatingDiscount || !discountCode.trim()} onClick={() => void applyDiscount()} type="button">
+          {validatingDiscount ? t('applyingDiscount') : t('applyDiscount')}
+        </button>
+      </div>
+      {discountPreview && (
+        <div className="discount-summary" role="status">
+          <span>{t('discountApplied', { code: discountPreview.code })}</span>
+          <span>{formatCurrency(discountPreview.originalTotal, selectedRoomType?.currency ?? 'EUR')}</span>
+          <strong>−{formatCurrency(discountPreview.discountAmount, selectedRoomType?.currency ?? 'EUR')}</strong>
+          <strong>{t('finalTotal')}: {formatCurrency(discountPreview.finalTotal, selectedRoomType?.currency ?? 'EUR')}</strong>
+        </div>
+      )}
+      {discountMessage && <p className="error">{discountMessage}</p>}
 
       <label>
         Payment method

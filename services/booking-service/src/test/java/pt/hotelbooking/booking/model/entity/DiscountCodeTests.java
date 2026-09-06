@@ -10,6 +10,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DiscountCodeTests {
 
     @Test
+    void validityIncludesTheFinalDate() {
+        DiscountCode code = new DiscountCode(
+                "hotel-1", "LASTDAY", BigDecimal.TEN, null,
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 6), null);
+
+        assertThat(code.isValidOn(LocalDate.of(2026, 9, 6))).isTrue();
+        assertThat(code.isValidOn(LocalDate.of(2026, 9, 7))).isFalse();
+    }
+
+    @Test
     void becomesUnavailableAfterMaximumUses() {
         DiscountCode code = new DiscountCode(
                 "hotel-1", "LIMITED", null, BigDecimal.TEN,
