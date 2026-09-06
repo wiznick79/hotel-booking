@@ -9,6 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import pt.hotelbooking.notification.model.Notification;
 
 import java.util.UUID;
@@ -26,7 +28,8 @@ class SmtpEmailSenderTests {
 
     @BeforeEach
     void setUp() {
-        emailSender = new SmtpEmailSender(mailSender);
+        emailSender = new SmtpEmailSender(mailSender, new SmtpResilience(
+                CircuitBreakerRegistry.ofDefaults(), BulkheadRegistry.ofDefaults()));
         ReflectionTestUtils.setField(emailSender, "fromAddress", "bookings@wiznick.net");
     }
 

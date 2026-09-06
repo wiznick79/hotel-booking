@@ -46,6 +46,12 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
+Checkout creation uses bounded connection/read timeouts, a dedicated circuit breaker, and a semaphore bulkhead. The
+payment-attempt UUID is also the basis of Stripe's idempotency key. Calls are deliberately not retried synchronously;
+the same pending attempt can be initiated safely again by the existing payment flow if the first response was lost.
+The defaults can be tuned with `STRIPE_CONNECT_TIMEOUT_MS`, `STRIPE_READ_TIMEOUT_MS`, and
+`STRIPE_MAX_CONCURRENT_CALLS`.
+
 Only one online provider should be enabled at a time. For local webhook forwarding, run:
 
 ```powershell

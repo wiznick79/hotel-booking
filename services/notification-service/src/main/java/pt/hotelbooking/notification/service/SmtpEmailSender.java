@@ -12,6 +12,7 @@ import pt.hotelbooking.notification.model.Notification;
 public class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender mailSender;
+    private final SmtpResilience smtpResilience;
 
     @Value("${notification.email.from}")
     private String fromAddress;
@@ -28,7 +29,13 @@ public class SmtpEmailSender implements EmailSender {
         message.setSubject(notification.getSubject());
         message.setText(notification.getBody());
 
-        mailSender.send(message);
+        smtpResilience.execute(() -> {
+            try {
+                mailSender.send(message);
+            } catch (RuntimeException exception) {
+                throw new EmailDeliveryUnavailableException("SMTP delivery failed.", exception);
+            }
+        });
     }
 
     private String formatFromAddress(Notification notification) {

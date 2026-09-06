@@ -48,6 +48,8 @@ payment:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
     public-frontend-base-url: ${PUBLIC_FRONTEND_BASE_URL:http://localhost:3002}
+    connect-timeout-ms: ${STRIPE_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${STRIPE_READ_TIMEOUT_MS:5000}
 
 hotel-service:
   url: ${HOTEL_SERVICE_URL:http://localhost:8081}
@@ -68,6 +70,22 @@ resilience4j:
         event-consumer-buffer-size: 20
         record-exceptions:
           - pt.hotelbooking.booking.integration.HotelServiceUnavailableException
+      stripe:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        event-consumer-buffer-size: 20
+        record-exceptions:
+          - pt.hotelbooking.booking.payment.stripe.StripeServiceUnavailableException
+  bulkhead:
+    instances:
+      stripe:
+        max-concurrent-calls: ${STRIPE_MAX_CONCURRENT_CALLS:10}
+        max-wait-duration: 0
   retry:
     instances:
       hotelService:
