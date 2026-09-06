@@ -62,7 +62,7 @@ public class DiscountCode {
     public boolean isValidOn(LocalDate date) {
         return active
                 && !date.isBefore(validFrom)
-                && date.isBefore(validUntil)
+                && !date.isAfter(validUntil)
                 && (maximumUses == null || usedCount < maximumUses);
     }
 
@@ -85,6 +85,12 @@ public class DiscountCode {
 
     public void deactivate() {
         active = false;
+    }
+
+    public void activate() {
+        if (!erased) {
+            active = true;
+        }
     }
 
     public void erase() {
