@@ -2,6 +2,14 @@
 
 A small hotel booking system built as a practical microservices learning project.
 
+## Project tour
+
+The permanent, application-independent project microsite is published through GitHub Pages:
+
+**[Explore the Hotel Booking project tour](https://wiznick79.github.io/hotel-booking/)**
+
+Its source lives in `site/`; the Pages workflow builds and verifies it for pull requests and publishes it from `main`.
+
 ## Goals
 
 - Support guest bookings without requiring an account.
