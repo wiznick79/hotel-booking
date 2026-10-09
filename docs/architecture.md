@@ -176,14 +176,15 @@ The service ports are also exposed locally for diagnostics: hotel `18081`, booki
 ## Deployment and CI/CD
 
 - **GitHub Actions** runs Maven verification, validates Docker Compose, and builds backend and frontend Docker images for pushes and pull requests targeting `main`.
-- **Terraform** defines the AWS staging environment in `eu-west-3`: VPC, security group, Elastic IP, Amazon Linux 2023 EC2 host, Systems Manager access, an S3 deployment-artifact bucket, and GitHub OIDC deployment role.
+- **Terraform** defines the AWS staging environment in `eu-west-3`: VPC, security group, Elastic IP, Amazon Linux 2023 EC2 host, Systems Manager access, an S3 deployment-artifact bucket, GitHub OIDC deployment role, and a verified Amazon SES domain identity for `wiznick.net`.
 - The staging host is administered through AWS Systems Manager Session Manager; SSH is not exposed.
 - A manual deployment workflow delivers the repository artifact from GitHub to the host using short-lived OIDC credentials and Systems Manager. The host reads secrets from Parameter Store and starts the staging Compose override.
 - The current host builds service images sequentially from source. A later improvement is CI-built immutable images stored in a registry.
 
 ## Intentional current limitations and next evolution
 
-- The frontend containers need their first staging deployment and a DNS record for `admin.hotel.wiznick.net`.
+- The staging stack was deployed at `hotel.wiznick.net` and `admin.hotel.wiznick.net` in August 2026;
+  see [AWS staging lifecycle](operations/aws-staging-lifecycle.md) for teardown and recreation guidance.
 - Public hotel resolution uses an explicit deployment hotel ID, with automatic selection only for single-hotel installations. Hostname-to-hotel routing remains a future option.
 - Internal synchronous calls currently use configured service URLs and are protected with bounded timeouts,
   transient retries, and circuit breakers. Service discovery and/or a service mesh are not needed for the current
